@@ -1,0 +1,209 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model AgencyProfile {
+  id               String   @id @default(cuid())
+  name             String
+  services         String[]
+  valueProposition String   @default("")
+  targetIndustries String[]
+  targetCompanySize String  @default("")
+  painPoints       String[]
+  targetGeography  String[]
+  additionalNotes  String   @default("")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("agency_profiles")
+}
+
+model Company {
+  id             String    @id @default(cuid())
+  name           String
+  address        String    @default("")
+  city           String    @default("")
+  state          String    @default("")
+  zip            String    @default("")
+  phone          String    @default("")
+  website        String    @default("")
+  industry       String    @default("")
+  employeeCount  String    @default("")
+  rating         Float?
+  totalRatings   Int?
+  placeId        String?   @unique
+  source         String    @default("google_places")
+  enrichmentData Json?
+  enrichedAt     DateTime?
+  notes          String    @default("")
+  userId         String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  contacts Contact[]
+
+  @@map("companies")
+}
+
+model Contact {
+  id                String        @id @default(cuid())
+  firstName         String        @default("")
+  lastName          String        @default("")
+  title             String        @default("")
+  email             String        @default("")
+  phone             String        @default("")
+  linkedin          String        @default("")
+  status            ContactStatus @default(NEW)
+  enrichmentSummary String        @default("")
+  enrichedAt        DateTime?
+  notes             String        @default("")
+  companyId         String
+  userId            String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  sends    Send[]
+
+  @@map("contacts")
+}
+
+enum ContactStatus {
+  NEW
+  CONTACTED
+  RESPONDED
+  QUALIFIED
+  CLOSED
+  NOT_INTERESTED
+}
+
+model SavedSearch {
+  id        String    @id @default(cuid())
+  name      String
+  query     String
+  filters   Json      @default("{}")
+  lastRunAt DateTime?
+  userId    String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("saved_searches")
+}
+
+model Campaign {
+  id        String         @id @default(cuid())
+  name      String
+  status    CampaignStatus @default(DRAFT)
+  industry  String         @default("")
+  notes     String         @default("")
+  userId    String?
+  approvedAt DateTime?
+  sentAt    DateTime?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  steps CampaignStep[]
+  sends Send[]
+
+  @@map("campaigns")
+}
+
+enum CampaignStatus {
+  DRAFT
+  READY
+  APPROVED
+  SENDING
+  ACTIVE
+  COMPLETED
+  PAUSED
+}
+
+model CampaignStep {
+  id         String   @id @default(cuid())
+  campaignId String
+  stepNumber Int
+  label      String   @default("")
+  delayDays  Int      @default(0)
+  subject    String
+  body       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  sends    Send[]
+
+  @@unique([campaignId, stepNumber])
+  @@map("campaign_steps")
+}
+
+model Send {
+  id          String     @id @default(cuid())
+  campaignId  String
+  contactId   String
+  stepId      String
+  status      SendStatus @default(PENDING)
+  jobId       String?
+  sentAt      DateTime?
+  openedAt    DateTime?
+  clickedAt   DateTime?
+  respondedAt DateTime?
+  bouncedAt   DateTime?
+  errorMsg    String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  campaign Campaign      @relation(fields: [campaignId], references: [id])
+  contact  Contact       @relation(fields: [contactId], references: [id])
+  step     CampaignStep  @relation(fields: [stepId], references: [id])
+  tokens   TrackingToken[]
+
+  @@unique([campaignId, contactId, stepId])
+  @@map("sends")
+}
+
+enum SendStatus {
+  PENDING
+  SCHEDULED
+  SENT
+  OPENED
+  CLICKED
+  RESPONDED
+  BOUNCED
+  FAILED
+  CANCELLED
+}
+
+model TrackingToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  sendId    String
+  type      TokenType
+  url       String?
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  send Send @relation(fields: [sendId], references: [id], onDelete: Cascade)
+
+  @@map("tracking_tokens")
+}
+
+enum TokenType {
+  OPEN
+  CLICK
+}
+
+model GmailCredential {
+  id           String   @id @default(cuid())
+  accessToken  String
+  refreshToken String
+  expiryDate   BigInt
+  email        String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("gmail_credentials")
+}
