@@ -183,22 +183,33 @@ export default function CampaignBuilder({ contacts, agencyProfile }: Props) {
             {filteredContacts.length === 0 && (
               <p className="text-sm text-zinc-500 text-center py-4">No contacts with emails found</p>
             )}
-            {filteredContacts.map((c) => (
-              <label key={c.id} className="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-zinc-800/50 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedContactIds.has(c.id)}
-                  onChange={() => toggleContact(c.id)}
-                  className="w-4 h-4 rounded accent-blue-500"
-                />
-                <div className="min-w-0">
-                  <div className="text-sm text-white truncate">
-                    {[c.firstName, c.lastName].filter(Boolean).join(" ")}
+            {filteredContacts.map((c) => {
+              const isDNC = c.status === "DO_NOT_CONTACT";
+              return (
+                <label
+                  key={c.id}
+                  className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition-colors ${
+                    isDNC ? "opacity-40 cursor-not-allowed" : "hover:bg-zinc-800/50 cursor-pointer"
+                  }`}
+                  title={isDNC ? "Do Not Contact — cannot add to campaign" : undefined}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedContactIds.has(c.id)}
+                    onChange={() => !isDNC && toggleContact(c.id)}
+                    disabled={isDNC}
+                    className="w-4 h-4 rounded accent-blue-500 disabled:cursor-not-allowed"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm text-white truncate flex items-center gap-2">
+                      {[c.firstName, c.lastName].filter(Boolean).join(" ")}
+                      {isDNC && <span className="text-xs text-red-400 bg-red-950/40 px-1.5 py-0.5 rounded">DNC</span>}
+                    </div>
+                    <div className="text-xs text-zinc-500 truncate">{c.email} · {c.company.name}</div>
                   </div>
-                  <div className="text-xs text-zinc-500 truncate">{c.email} · {c.company.name}</div>
-                </div>
-              </label>
-            ))}
+                </label>
+              );
+            })}
           </div>
         </div>
 

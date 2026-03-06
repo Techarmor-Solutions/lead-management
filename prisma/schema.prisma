@@ -79,6 +79,7 @@ enum ContactStatus {
   QUALIFIED
   CLOSED
   NOT_INTERESTED
+  DO_NOT_CONTACT
 }
 
 model SavedSearch {

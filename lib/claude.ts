@@ -26,63 +26,76 @@ export async function enrichCompany(
   website: string,
   industry: string
 ): Promise<EnrichmentResult> {
-  const message = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 2000,
-    tools: [
-      {
-        name: "web_search",
-        type: "computer_20250124" as never,
-      } as never,
-    ],
-    messages: [
-      {
-        role: "user",
-        content: `Research the company "${companyName}" (website: ${website || "unknown"}, industry: ${industry || "unknown"}).
+  const empty: EnrichmentResult = {
+    contacts: [],
+    companyLinkedIn: "",
+    companySummary: "",
+    recentNews: "",
+    techStack: "",
+  };
 
-Find and return as JSON:
-1. Decision-maker contacts (owner, CEO, marketing director, etc.) with: firstName, lastName, title, email (if findable), phone, linkedinUrl
-2. Company LinkedIn URL
-3. Brief company summary (2-3 sentences)
-4. Any recent news or notable mentions
-5. Technology stack hints (what software/tools they use)
+  const messages: Anthropic.MessageParam[] = [
+    {
+      role: "user",
+      content: `Search the web and research the company "${companyName}" (website: ${website || "unknown"}, industry: ${industry || "unknown"}).
 
-Search their website, LinkedIn, and the web. Return ONLY valid JSON matching this schema:
-{
-  "contacts": [{"firstName":"","lastName":"","title":"","email":"","phone":"","linkedin":""}],
-  "companyLinkedIn": "",
-  "companySummary": "",
-  "recentNews": "",
-  "techStack": ""
-}`,
-      },
-    ],
-  });
+IMPORTANT: Your final response must be ONLY a raw JSON object. No markdown, no explanation, no preamble, no code fences. Start your response with { and end with }.
 
-  const textContent = message.content.find((c) => c.type === "text");
-  if (!textContent || textContent.type !== "text") {
-    return {
-      contacts: [],
-      companyLinkedIn: "",
-      companySummary: "",
-      recentNews: "",
-      techStack: "",
-    };
+Find: decision-maker contacts (owner/CEO/marketing director), company LinkedIn URL, 2-3 sentence summary, recent news, tech stack clues.
+
+Required JSON schema (use empty string if unknown):
+{"contacts":[{"firstName":"","lastName":"","title":"","email":"","phone":"","linkedin":""}],"companyLinkedIn":"","companySummary":"","recentNews":"","techStack":""}`,
+    },
+  ];
+
+  // Agentic loop — Claude may call web_search multiple times before producing the final JSON
+  for (let i = 0; i < 10; i++) {
+    const response = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 4000,
+      tools: [{ type: "web_search_20250305", name: "web_search" } as never],
+      messages,
+    });
+
+    if (response.stop_reason === "end_turn") {
+      const textBlock = response.content.find((c) => c.type === "text");
+      if (!textBlock || textBlock.type !== "text") return empty;
+      const text = textBlock.text;
+
+      // Try code fence first (```json ... ``` or ``` ... ```)
+      const fenceMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+      // Then try raw JSON object (greedy — find the outermost {...})
+      const rawMatch = text.match(/\{[\s\S]*\}/);
+      const jsonStr = fenceMatch?.[1] ?? rawMatch?.[0];
+
+      if (!jsonStr) return { ...empty, companySummary: text.slice(0, 500) };
+      try {
+        return JSON.parse(jsonStr);
+      } catch {
+        return { ...empty, companySummary: text.slice(0, 500) };
+      }
+    }
+
+    if (response.stop_reason === "tool_use") {
+      // Add assistant message with tool calls, then add tool results
+      messages.push({ role: "assistant", content: response.content });
+
+      const toolResults: Anthropic.ToolResultBlockParam[] = response.content
+        .filter((b) => b.type === "tool_use")
+        .map((b) => ({
+          type: "tool_result" as const,
+          tool_use_id: (b as Anthropic.ToolUseBlock).id,
+          content: "",
+        }));
+
+      messages.push({ role: "user", content: toolResults });
+      continue;
+    }
+
+    break;
   }
 
-  try {
-    const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON found");
-    return JSON.parse(jsonMatch[0]);
-  } catch {
-    return {
-      contacts: [],
-      companyLinkedIn: "",
-      companySummary: "Could not parse enrichment data.",
-      recentNews: "",
-      techStack: "",
-    };
-  }
+  return empty;
 }
 
 export async function generateCampaignCopy(params: {

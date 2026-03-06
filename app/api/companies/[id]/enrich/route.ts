@@ -9,7 +9,6 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
 
   const enrichmentData = await enrichCompany(company.name, company.website, company.industry);
 
-  // Update company with enrichment
   const updated = await prisma.company.update({
     where: { id },
     data: {
@@ -18,40 +17,31 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
     },
   });
 
-  // Create/update contacts from enrichment
+  // Save contacts — find existing by email+company or create new
   for (const contact of enrichmentData.contacts) {
     if (!contact.firstName && !contact.lastName) continue;
 
-    await prisma.contact.upsert({
-      where: {
-        // Use a composite unique approach — try to find by email+company
-        id: (
-          await prisma.contact.findFirst({
-            where: { companyId: id, email: contact.email || "__" },
-            select: { id: true },
-          })
-        )?.id || "__new__",
-      },
-      update: {
-        firstName: contact.firstName,
-        lastName: contact.lastName,
-        title: contact.title,
-        email: contact.email,
-        phone: contact.phone,
-        linkedin: contact.linkedin,
-        enrichedAt: new Date(),
-      },
-      create: {
-        firstName: contact.firstName,
-        lastName: contact.lastName,
-        title: contact.title,
-        email: contact.email || "",
-        phone: contact.phone || "",
-        linkedin: contact.linkedin || "",
-        companyId: id,
-        enrichedAt: new Date(),
-      },
-    });
+    const contactData = {
+      firstName: contact.firstName || "",
+      lastName: contact.lastName || "",
+      title: contact.title || "",
+      email: contact.email || "",
+      phone: contact.phone || "",
+      linkedin: contact.linkedin || "",
+      enrichedAt: new Date(),
+    };
+
+    const existing = contact.email
+      ? await prisma.contact.findFirst({ where: { companyId: id, email: contact.email } })
+      : await prisma.contact.findFirst({
+          where: { companyId: id, firstName: contact.firstName, lastName: contact.lastName },
+        });
+
+    if (existing) {
+      await prisma.contact.update({ where: { id: existing.id }, data: contactData });
+    } else {
+      await prisma.contact.create({ data: { ...contactData, companyId: id } });
+    }
   }
 
   return NextResponse.json({ company: updated, enrichmentData });

@@ -18,7 +18,7 @@ interface Contact {
   company: { id: string; name: string };
 }
 
-const STATUSES = ["", "NEW", "CONTACTED", "RESPONDED", "QUALIFIED", "CLOSED", "NOT_INTERESTED"];
+const STATUSES = ["", "NEW", "CONTACTED", "RESPONDED", "QUALIFIED", "CLOSED", "NOT_INTERESTED", "DO_NOT_CONTACT"];
 const STATUS_LABELS: Record<string, string> = {
   "": "All",
   NEW: "New",
@@ -27,6 +27,7 @@ const STATUS_LABELS: Record<string, string> = {
   QUALIFIED: "Qualified",
   CLOSED: "Closed",
   NOT_INTERESTED: "Not Interested",
+  DO_NOT_CONTACT: "Do Not Contact",
 };
 
 interface Props {
@@ -108,7 +109,7 @@ export default function ContactsTable({ contacts, total, page, limit, search: in
               </thead>
               <tbody className="divide-y divide-zinc-800">
                 {contacts.map((c) => (
-                  <tr key={c.id} className="hover:bg-zinc-800/20 transition-colors">
+                  <tr key={c.id} className={`hover:bg-zinc-800/20 transition-colors ${c.status === "DO_NOT_CONTACT" ? "opacity-50" : ""}`}>
                     <td className="px-5 py-3">
                       <div className="font-medium text-white">
                         {[c.firstName, c.lastName].filter(Boolean).join(" ") || "Unknown"}

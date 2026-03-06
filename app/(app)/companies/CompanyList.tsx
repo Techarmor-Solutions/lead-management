@@ -24,37 +24,82 @@ interface Props {
   page: number;
   limit: number;
   search: string;
+  industryFilter: string;
+  industryOptions: string[];
 }
 
-export default function CompanyList({ companies, total, page, limit, search: initialSearch }: Props) {
+export default function CompanyList({
+  companies,
+  total,
+  page,
+  limit,
+  search: initialSearch,
+  industryFilter,
+  industryOptions,
+}: Props) {
   const router = useRouter();
   const [search, setSearch] = useState(initialSearch);
   const totalPages = Math.ceil(total / limit);
 
+  function navigate(newSearch: string, newIndustry: string, newPage = 1) {
+    const params = new URLSearchParams();
+    if (newSearch) params.set("search", newSearch);
+    if (newIndustry) params.set("industry", newIndustry);
+    if (newPage > 1) params.set("page", String(newPage));
+    router.push(`/companies?${params}`);
+  }
+
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    router.push(`/companies?search=${encodeURIComponent(search)}`);
+    navigate(search, industryFilter);
   }
 
   return (
     <div>
-      <form onSubmit={handleSearch} className="flex gap-2 mb-4">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="input flex-1"
-          placeholder="Search companies..."
-        />
-        <button type="submit" className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-          Search
-        </button>
-      </form>
+      <div className="flex gap-2 mb-4 flex-wrap">
+        <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-0">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="input flex-1"
+            placeholder="Search companies..."
+          />
+          <button
+            type="submit"
+            className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+          >
+            Search
+          </button>
+        </form>
+
+        <select
+          value={industryFilter}
+          onChange={(e) => navigate(search, e.target.value)}
+          className="input"
+        >
+          <option value="">All categories</option>
+          {industryOptions.map((ind) => (
+            <option key={ind} value={ind}>
+              {ind}
+            </option>
+          ))}
+        </select>
+
+        {(search || industryFilter) && (
+          <button
+            onClick={() => { setSearch(""); navigate("", ""); }}
+            className="text-sm text-zinc-500 hover:text-white px-3 py-2 rounded-lg hover:bg-zinc-800 transition-colors"
+          >
+            Clear
+          </button>
+        )}
+      </div>
 
       <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl overflow-hidden">
         {companies.length === 0 ? (
           <div className="py-16 text-center text-zinc-500">
             <Building2 className="w-8 h-8 mx-auto mb-3 opacity-30" />
-            <p>No companies yet</p>
+            <p>No companies found</p>
             <Link href="/leads" className="text-sm text-blue-400 hover:text-blue-300 mt-2 inline-block">
               Discover leads →
             </Link>
@@ -71,6 +116,11 @@ export default function CompanyList({ companies, total, page, limit, search: ini
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-white">{c.name}</span>
+                      {c.industry && (
+                        <span className="text-xs bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">
+                          {c.industry}
+                        </span>
+                      )}
                       {c.enrichedAt && (
                         <span className="text-xs bg-green-900/30 text-green-400 px-1.5 py-0.5 rounded">
                           Enriched
@@ -112,18 +162,20 @@ export default function CompanyList({ companies, total, page, limit, search: ini
                   {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}
                 </span>
                 <div className="flex gap-1">
-                  <Link
-                    href={`/companies?search=${initialSearch}&page=${page - 1}`}
-                    className={`p-1.5 rounded-lg transition-colors ${page <= 1 ? "text-zinc-700 pointer-events-none" : "text-zinc-400 hover:bg-zinc-800"}`}
+                  <button
+                    onClick={() => navigate(search, industryFilter, page - 1)}
+                    disabled={page <= 1}
+                    className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-800 disabled:opacity-30 transition-colors"
                   >
                     <ChevronLeft className="w-4 h-4" />
-                  </Link>
-                  <Link
-                    href={`/companies?search=${initialSearch}&page=${page + 1}`}
-                    className={`p-1.5 rounded-lg transition-colors ${page >= totalPages ? "text-zinc-700 pointer-events-none" : "text-zinc-400 hover:bg-zinc-800"}`}
+                  </button>
+                  <button
+                    onClick={() => navigate(search, industryFilter, page + 1)}
+                    disabled={page >= totalPages}
+                    className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-800 disabled:opacity-30 transition-colors"
                   >
                     <ChevronRight className="w-4 h-4" />
-                  </Link>
+                  </button>
                 </div>
               </div>
             )}
