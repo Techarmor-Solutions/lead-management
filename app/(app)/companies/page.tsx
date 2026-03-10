@@ -46,9 +46,17 @@ export default async function CompaniesPage({
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Companies</h1>
-        <p className="text-zinc-500 text-sm mt-1">{total} companies saved</p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Companies</h1>
+          <p className="text-zinc-500 text-sm mt-1">{total} companies saved</p>
+        </div>
+        <a
+          href="/api/companies/export"
+          className="text-sm bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg transition-colors"
+        >
+          Export CSV
+        </a>
       </div>
       <CompanyList
         companies={companies}

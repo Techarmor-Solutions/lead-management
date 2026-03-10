@@ -66,8 +66,9 @@ model Contact {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
-  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  sends    Send[]
+  company         Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  sends           Send[]
+  listMemberships ContactListMember[]
 
   @@map("contacts")
 }
@@ -204,6 +205,32 @@ model TrackingToken {
 enum TokenType {
   OPEN
   CLICK
+}
+
+model ContactList {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  userId      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members ContactListMember[]
+
+  @@map("contact_lists")
+}
+
+model ContactListMember {
+  id        String   @id @default(cuid())
+  listId    String
+  contactId String
+  createdAt DateTime @default(now())
+
+  list    ContactList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  contact Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([listId, contactId])
+  @@map("contact_list_members")
 }
 
 model GmailCredential {

@@ -11,6 +11,13 @@ interface ContactWithCompany extends Contact {
   company: { name: string; industry: string; website: string };
 }
 
+interface ContactList {
+  id: string;
+  name: string;
+  _count: { members: number };
+  members: { contactId: string }[];
+}
+
 interface Step {
   label: string;
   stepType: StepType;
@@ -22,6 +29,7 @@ interface Step {
 interface Props {
   contacts: ContactWithCompany[];
   agencyProfile: AgencyProfile | null;
+  lists: ContactList[];
 }
 
 const TAGS = ["{{first_name}}", "{{company_name}}", "{{sender_name}}"];
@@ -42,12 +50,13 @@ const TYPE_COLORS: Record<StepType, string> = {
   TASK: "bg-amber-600/20 text-amber-400 border-amber-600/30",
 };
 
-export default function CampaignBuilder({ contacts, agencyProfile }: Props) {
+export default function CampaignBuilder({ contacts, agencyProfile, lists }: Props) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [industry, setIndustry] = useState("");
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [contactSearch, setContactSearch] = useState("");
+  const [selectedListId, setSelectedListId] = useState("");
   const [steps, setSteps] = useState<Step[]>([
     { label: "Initial Outreach", stepType: "EMAIL", delayDays: 0, subject: "", body: "" },
     { label: "Follow-up #1", stepType: "EMAIL", delayDays: 3, subject: "", body: "" },
@@ -75,6 +84,21 @@ export default function CampaignBuilder({ contacts, agencyProfile }: Props) {
       else next.add(id);
       return next;
     });
+  }
+
+  function importFromList(listId: string) {
+    const list = lists.find((l) => l.id === listId);
+    if (!list) return;
+    const eligible = list.members
+      .map((m) => contacts.find((c) => c.id === m.contactId))
+      .filter((c) => c && c.status !== "DO_NOT_CONTACT")
+      .map((c) => c!.id);
+    setSelectedContactIds((prev) => {
+      const next = new Set(prev);
+      eligible.forEach((id) => next.add(id));
+      return next;
+    });
+    setSelectedListId("");
   }
 
   function updateStep(index: number, field: keyof Step, value: string | number) {
@@ -204,6 +228,18 @@ export default function CampaignBuilder({ contacts, agencyProfile }: Props) {
         <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-white">Contacts ({selectedContactIds.size} selected)</h3>
+            {lists.length > 0 && (
+              <select
+                value={selectedListId}
+                onChange={(e) => { setSelectedListId(e.target.value); if (e.target.value) importFromList(e.target.value); }}
+                className="input text-xs py-1 px-2"
+              >
+                <option value="">Import from list…</option>
+                {lists.map((l) => (
+                  <option key={l.id} value={l.id}>{l.name} ({l._count.members})</option>
+                ))}
+              </select>
+            )}
           </div>
           <input
             value={contactSearch}

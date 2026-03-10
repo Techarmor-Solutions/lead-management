@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   Shield,
+  ListChecks,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/leads", label: "Lead Discovery", icon: Search },
   { href: "/companies", label: "Companies", icon: Building2 },
   { href: "/contacts", label: "Contacts", icon: Users },
+  { href: "/lists", label: "Lists", icon: ListChecks },
   { href: "/campaigns", label: "Campaigns", icon: Mail },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
 ];
