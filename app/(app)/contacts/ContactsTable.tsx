@@ -111,9 +111,9 @@ export default function ContactsTable({ contacts, total, page, limit, search: in
                 {contacts.map((c) => (
                   <tr key={c.id} className={`hover:bg-zinc-800/20 transition-colors ${c.status === "DO_NOT_CONTACT" ? "opacity-50" : ""}`}>
                     <td className="px-5 py-3">
-                      <div className="font-medium text-white">
+                      <Link href={`/contacts/${c.id}`} className="font-medium text-white hover:text-blue-400 transition-colors">
                         {[c.firstName, c.lastName].filter(Boolean).join(" ") || "Unknown"}
-                      </div>
+                      </Link>
                       {c.title && <div className="text-xs text-zinc-500">{c.title}</div>}
                     </td>
                     <td className="px-5 py-3">

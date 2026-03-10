@@ -6,7 +6,6 @@ export const dynamic = "force-dynamic";
 export default async function NewCampaignPage() {
   const [contacts, agencyProfile, lists] = await Promise.all([
     prisma.contact.findMany({
-      where: { email: { not: "" } },
       orderBy: { createdAt: "desc" },
       include: { company: { select: { name: true, industry: true, website: true } } },
     }),

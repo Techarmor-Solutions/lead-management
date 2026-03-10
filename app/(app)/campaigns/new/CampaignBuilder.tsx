@@ -91,7 +91,7 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists }: Prop
     if (!list) return;
     const eligible = list.members
       .map((m) => contacts.find((c) => c.id === m.contactId))
-      .filter((c) => c && c.status !== "DO_NOT_CONTACT")
+      .filter((c) => c && c.status !== "DO_NOT_CONTACT" && c.email)
       .map((c) => c!.id);
     setSelectedContactIds((prev) => {
       const next = new Set(prev);
@@ -253,27 +253,30 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists }: Prop
             )}
             {filteredContacts.map((c) => {
               const isDNC = c.status === "DO_NOT_CONTACT";
+              const noEmail = !c.email;
+              const disabled = isDNC || noEmail;
               return (
                 <label
                   key={c.id}
                   className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition-colors ${
-                    isDNC ? "opacity-40 cursor-not-allowed" : "hover:bg-zinc-800/50 cursor-pointer"
+                    disabled ? "opacity-40 cursor-not-allowed" : "hover:bg-zinc-800/50 cursor-pointer"
                   }`}
-                  title={isDNC ? "Do Not Contact — cannot add to campaign" : undefined}
+                  title={isDNC ? "Do Not Contact — cannot add to campaign" : noEmail ? "No email address — add one first" : undefined}
                 >
                   <input
                     type="checkbox"
                     checked={selectedContactIds.has(c.id)}
-                    onChange={() => !isDNC && toggleContact(c.id)}
-                    disabled={isDNC}
+                    onChange={() => !disabled && toggleContact(c.id)}
+                    disabled={disabled}
                     className="w-4 h-4 rounded accent-blue-500 disabled:cursor-not-allowed"
                   />
                   <div className="min-w-0 flex-1">
                     <div className="text-sm text-white truncate flex items-center gap-2">
-                      {[c.firstName, c.lastName].filter(Boolean).join(" ")}
+                      {[c.firstName, c.lastName].filter(Boolean).join(" ") || "(no name)"}
                       {isDNC && <span className="text-xs text-red-400 bg-red-950/40 px-1.5 py-0.5 rounded">DNC</span>}
+                      {noEmail && <span className="text-xs text-zinc-500 bg-zinc-800 px-1.5 py-0.5 rounded">no email</span>}
                     </div>
-                    <div className="text-xs text-zinc-500 truncate">{c.email} · {c.company.name}</div>
+                    <div className="text-xs text-zinc-500 truncate">{c.email || "—"} · {c.company.name}</div>
                   </div>
                 </label>
               );

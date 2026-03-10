@@ -22,7 +22,6 @@ export default async function ListDetailPage({ params }: { params: Promise<{ id:
       },
     }),
     prisma.contact.findMany({
-      where: { email: { not: "" } },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
