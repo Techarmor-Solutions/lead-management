@@ -18,22 +18,27 @@ export async function POST(req: NextRequest) {
       industry: industry || "",
       status: status || "DRAFT",
       steps: {
-        create: steps.map((step: { label: string; delayDays: number; subject: string; body: string }, i: number) => ({
-          stepNumber: i + 1,
-          label: step.label,
-          delayDays: i === 0 ? 0 : step.delayDays,
-          subject: step.subject,
-          body: step.body,
-        })),
+        create: steps.map(
+          (step: { label: string; stepType: string; delayDays: number; subject: string; body: string }, i: number) => ({
+            stepNumber: i + 1,
+            stepType: step.stepType || "EMAIL",
+            label: step.label,
+            delayDays: i === 0 ? 0 : step.delayDays,
+            subject: step.subject || "",
+            body: step.body || "",
+          })
+        ),
       },
     },
     include: { steps: true },
   });
 
-  // Create pending send records for each contact × step
+  // Create pending send records for each contact × EMAIL step only
+  // Non-email steps are manual tasks — no automated sends
+  const emailSteps = campaign.steps.filter((s) => s.stepType === "EMAIL");
   const sendData = [];
   for (const contactId of contactIds) {
-    for (const step of campaign.steps) {
+    for (const step of emailSteps) {
       sendData.push({
         campaignId: campaign.id,
         contactId,
@@ -46,6 +51,5 @@ export async function POST(req: NextRequest) {
     await prisma.send.createMany({ data: sendData, skipDuplicates: true });
   }
 
-  // Update contact status to CONTACTED (will be done at send time, but mark now)
   return NextResponse.json(campaign);
 }

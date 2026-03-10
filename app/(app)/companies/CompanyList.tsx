@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Building2, Users, Globe, MapPin, Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { Building2, Users, Globe, MapPin, Star, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 
 interface Company {
   id: string;
@@ -28,6 +28,17 @@ interface Props {
   industryOptions: string[];
 }
 
+const emptyForm = {
+  name: "",
+  industry: "",
+  website: "",
+  phone: "",
+  city: "",
+  state: "",
+  zip: "",
+  notes: "",
+};
+
 export default function CompanyList({
   companies,
   total,
@@ -39,6 +50,9 @@ export default function CompanyList({
 }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState(initialSearch);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
   const totalPages = Math.ceil(total / limit);
 
   function navigate(newSearch: string, newIndustry: string, newPage = 1) {
@@ -52,6 +66,25 @@ export default function CompanyList({
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     navigate(search, industryFilter);
+  }
+
+  function updateForm(field: keyof typeof emptyForm, value: string) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleAddCompany(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.name.trim()) return;
+    setSaving(true);
+    await fetch("/api/companies", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    setSaving(false);
+    setShowModal(false);
+    setForm(emptyForm);
+    router.refresh();
   }
 
   return (
@@ -93,6 +126,14 @@ export default function CompanyList({
             Clear
           </button>
         )}
+
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Add Company
+        </button>
       </div>
 
       <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl overflow-hidden">
@@ -182,6 +223,117 @@ export default function CompanyList({
           </>
         )}
       </div>
+
+      {/* Add Company Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl w-full max-w-lg">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+              <h2 className="font-semibold text-white">Add Company</h2>
+              <button onClick={() => setShowModal(false)} className="text-zinc-500 hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleAddCompany} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">Company Name *</label>
+                <input
+                  value={form.name}
+                  onChange={(e) => updateForm("name", e.target.value)}
+                  className="input w-full"
+                  placeholder="Acme Corp"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-zinc-500 mb-1">Industry</label>
+                  <input
+                    value={form.industry}
+                    onChange={(e) => updateForm("industry", e.target.value)}
+                    className="input w-full"
+                    placeholder="Restaurants"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-zinc-500 mb-1">Website</label>
+                  <input
+                    value={form.website}
+                    onChange={(e) => updateForm("website", e.target.value)}
+                    className="input w-full"
+                    placeholder="https://example.com"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-zinc-500 mb-1">Phone</label>
+                  <input
+                    value={form.phone}
+                    onChange={(e) => updateForm("phone", e.target.value)}
+                    className="input w-full"
+                    placeholder="(555) 000-0000"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-zinc-500 mb-1">City</label>
+                  <input
+                    value={form.city}
+                    onChange={(e) => updateForm("city", e.target.value)}
+                    className="input w-full"
+                    placeholder="Austin"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-zinc-500 mb-1">State</label>
+                  <input
+                    value={form.state}
+                    onChange={(e) => updateForm("state", e.target.value)}
+                    className="input w-full"
+                    placeholder="TX"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-zinc-500 mb-1">ZIP</label>
+                  <input
+                    value={form.zip}
+                    onChange={(e) => updateForm("zip", e.target.value)}
+                    className="input w-full"
+                    placeholder="78701"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">Notes</label>
+                <textarea
+                  value={form.notes}
+                  onChange={(e) => updateForm("notes", e.target.value)}
+                  className="input w-full resize-none h-20"
+                  placeholder="Any notes about this company..."
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving || !form.name.trim()}
+                  className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : "Add Company"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

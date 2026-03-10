@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Sparkles, ChevronDown, ChevronUp, GripVertical } from "lucide-react";
+import { Plus, Trash2, Sparkles, ChevronDown, ChevronUp, Mail, Linkedin, Phone, CheckSquare, MessageSquare } from "lucide-react";
 import { AgencyProfile, Contact } from "@prisma/client";
+
+type StepType = "EMAIL" | "LINKEDIN_CONNECT" | "LINKEDIN_MESSAGE" | "CALL" | "TASK";
 
 interface ContactWithCompany extends Contact {
   company: { name: string; industry: string; website: string };
@@ -11,6 +13,7 @@ interface ContactWithCompany extends Contact {
 
 interface Step {
   label: string;
+  stepType: StepType;
   delayDays: number;
   subject: string;
   body: string;
@@ -23,6 +26,22 @@ interface Props {
 
 const TAGS = ["{{first_name}}", "{{company_name}}", "{{sender_name}}"];
 
+const STEP_TYPES: { type: StepType; label: string; icon: React.ReactNode; color: string }[] = [
+  { type: "EMAIL", label: "Email", icon: <Mail className="w-3.5 h-3.5" />, color: "blue" },
+  { type: "LINKEDIN_CONNECT", label: "LinkedIn Connect", icon: <Linkedin className="w-3.5 h-3.5" />, color: "sky" },
+  { type: "LINKEDIN_MESSAGE", label: "LinkedIn Message", icon: <MessageSquare className="w-3.5 h-3.5" />, color: "sky" },
+  { type: "CALL", label: "Cold Call", icon: <Phone className="w-3.5 h-3.5" />, color: "green" },
+  { type: "TASK", label: "Task", icon: <CheckSquare className="w-3.5 h-3.5" />, color: "amber" },
+];
+
+const TYPE_COLORS: Record<StepType, string> = {
+  EMAIL: "bg-blue-600/20 text-blue-400 border-blue-600/30",
+  LINKEDIN_CONNECT: "bg-sky-600/20 text-sky-400 border-sky-600/30",
+  LINKEDIN_MESSAGE: "bg-sky-600/20 text-sky-400 border-sky-600/30",
+  CALL: "bg-green-600/20 text-green-400 border-green-600/30",
+  TASK: "bg-amber-600/20 text-amber-400 border-amber-600/30",
+};
+
 export default function CampaignBuilder({ contacts, agencyProfile }: Props) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -30,9 +49,9 @@ export default function CampaignBuilder({ contacts, agencyProfile }: Props) {
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [contactSearch, setContactSearch] = useState("");
   const [steps, setSteps] = useState<Step[]>([
-    { label: "Initial Outreach", delayDays: 0, subject: "", body: "" },
-    { label: "Follow-up #1", delayDays: 3, subject: "", body: "" },
-    { label: "Final Follow-up", delayDays: 7, subject: "", body: "" },
+    { label: "Initial Outreach", stepType: "EMAIL", delayDays: 0, subject: "", body: "" },
+    { label: "Follow-up #1", stepType: "EMAIL", delayDays: 3, subject: "", body: "" },
+    { label: "Final Follow-up", stepType: "EMAIL", delayDays: 7, subject: "", body: "" },
   ]);
   const [activeStep, setActiveStep] = useState(0);
   const [generating, setGenerating] = useState(false);
@@ -65,7 +84,7 @@ export default function CampaignBuilder({ contacts, agencyProfile }: Props) {
   function addStep() {
     setSteps((prev) => [
       ...prev,
-      { label: `Follow-up #${prev.length}`, delayDays: prev.length * 3, subject: "", body: "" },
+      { label: `Follow-up #${prev.length}`, stepType: "EMAIL", delayDays: prev.length * 3, subject: "", body: "" },
     ]);
     setActiveStep(steps.length);
   }
@@ -101,6 +120,12 @@ export default function CampaignBuilder({ contacts, agencyProfile }: Props) {
       website: "",
     };
 
+    const emailStepCount = steps.filter((s) => s.stepType === "EMAIL").length;
+    if (emailStepCount === 0) {
+      alert("Add at least one Email step to generate AI copy.");
+      return;
+    }
+
     setGenerating(true);
 
     const res = await fetch("/api/campaigns/generate-copy", {
@@ -115,19 +140,21 @@ export default function CampaignBuilder({ contacts, agencyProfile }: Props) {
           painPoints: agencyProfile.painPoints,
         },
         targetCompany: sampleCompany,
-        stepCount: steps.length,
+        stepCount: emailStepCount,
       }),
     });
 
     const data = await res.json();
     if (data.steps) {
+      // Apply AI copy only to EMAIL steps
+      let emailIdx = 0;
       setSteps((prev) =>
-        prev.map((step, i) => ({
-          ...step,
-          label: data.steps[i]?.label || step.label,
-          subject: data.steps[i]?.subject || step.subject,
-          body: data.steps[i]?.body || step.body,
-        }))
+        prev.map((step) => {
+          if (step.stepType !== "EMAIL") return step;
+          const ai = data.steps[emailIdx++];
+          if (!ai) return step;
+          return { ...step, label: ai.label || step.label, subject: ai.subject || step.subject, body: ai.body || step.body };
+        })
       );
     }
     setGenerating(false);
@@ -136,8 +163,11 @@ export default function CampaignBuilder({ contacts, agencyProfile }: Props) {
   async function handleSave(status: "DRAFT" | "READY") {
     if (!name.trim()) { alert("Campaign name required"); return; }
     if (selectedContactIds.size === 0) { alert("Select at least one contact"); return; }
-    if (steps.some((s) => !s.subject.trim() || !s.body.trim())) {
-      alert("All steps need a subject and body");
+
+    // Validate email steps have subject + body
+    const invalidEmail = steps.find((s) => s.stepType === "EMAIL" && (!s.subject.trim() || !s.body.trim()));
+    if (invalidEmail) {
+      alert(`Email step "${invalidEmail.label}" needs a subject and body.`);
       return;
     }
 
@@ -150,6 +180,8 @@ export default function CampaignBuilder({ contacts, agencyProfile }: Props) {
     const data = await res.json();
     router.push(`/campaigns/${data.id}`);
   }
+
+  const step = steps[activeStep];
 
   return (
     <div className="space-y-6">
@@ -181,7 +213,7 @@ export default function CampaignBuilder({ contacts, agencyProfile }: Props) {
           />
           <div className="space-y-1 max-h-72 overflow-y-auto">
             {filteredContacts.length === 0 && (
-              <p className="text-sm text-zinc-500 text-center py-4">No contacts with emails found</p>
+              <p className="text-sm text-zinc-500 text-center py-4">No contacts found</p>
             )}
             {filteredContacts.map((c) => {
               const isDNC = c.status === "DO_NOT_CONTACT";
@@ -216,7 +248,7 @@ export default function CampaignBuilder({ contacts, agencyProfile }: Props) {
         {/* Step Editor */}
         <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-white">Email Steps</h3>
+            <h3 className="font-semibold text-white">Steps ({steps.length})</h3>
             <div className="flex gap-2">
               <button
                 onClick={generateWithAI}
@@ -224,7 +256,7 @@ export default function CampaignBuilder({ contacts, agencyProfile }: Props) {
                 className="flex items-center gap-1.5 text-xs bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/30 text-purple-400 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                {generating ? "Generating..." : "Generate with AI"}
+                {generating ? "Generating..." : "AI Copy"}
               </button>
               <button
                 onClick={addStep}
@@ -238,30 +270,56 @@ export default function CampaignBuilder({ contacts, agencyProfile }: Props) {
 
           {/* Step tabs */}
           <div className="flex gap-1 mb-4 flex-wrap">
-            {steps.map((step, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveStep(i)}
-                className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg transition-colors ${
-                  activeStep === i
-                    ? "bg-blue-600/20 text-blue-400 border border-blue-600/30"
-                    : "bg-zinc-800 text-zinc-400 hover:text-white"
-                }`}
-              >
-                {i === activeStep ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                Step {i + 1}
-              </button>
-            ))}
+            {steps.map((s, i) => {
+              const typeInfo = STEP_TYPES.find((t) => t.type === s.stepType);
+              return (
+                <button
+                  key={i}
+                  onClick={() => setActiveStep(i)}
+                  className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg transition-colors border ${
+                    activeStep === i
+                      ? TYPE_COLORS[s.stepType]
+                      : "bg-zinc-800 text-zinc-400 hover:text-white border-transparent"
+                  }`}
+                >
+                  {activeStep === i ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  {typeInfo?.icon}
+                  Step {i + 1}
+                </button>
+              );
+            })}
           </div>
 
           {/* Active step form */}
-          {steps[activeStep] && (
+          {step && (
             <div className="space-y-3">
+              {/* Step type selector */}
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1.5">Step Type</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {STEP_TYPES.map((t) => (
+                    <button
+                      key={t.type}
+                      type="button"
+                      onClick={() => updateStep(activeStep, "stepType", t.type)}
+                      className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${
+                        step.stepType === t.type
+                          ? TYPE_COLORS[t.type]
+                          : "bg-zinc-800/50 text-zinc-500 border-transparent hover:text-zinc-300"
+                      }`}
+                    >
+                      {t.icon}
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-zinc-500 mb-1">Label</label>
                   <input
-                    value={steps[activeStep].label}
+                    value={step.label}
                     onChange={(e) => updateStep(activeStep, "label", e.target.value)}
                     className="input w-full text-sm"
                   />
@@ -273,45 +331,72 @@ export default function CampaignBuilder({ contacts, agencyProfile }: Props) {
                   <input
                     type="number"
                     min="0"
-                    value={steps[activeStep].delayDays}
+                    value={step.delayDays}
                     onChange={(e) => updateStep(activeStep, "delayDays", parseInt(e.target.value))}
                     className="input w-full text-sm"
                     disabled={activeStep === 0}
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs text-zinc-500 mb-1">Subject Line</label>
-                <input
-                  value={steps[activeStep].subject}
-                  onChange={(e) => updateStep(activeStep, "subject", e.target.value)}
-                  className="input w-full text-sm"
-                  placeholder="Quick question, {{first_name}}"
-                />
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs text-zinc-500">Body</label>
-                  <div className="flex gap-1">
-                    {TAGS.map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={() => insertTag(tag)}
-                        className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded transition-colors"
-                      >
-                        {tag}
-                      </button>
-                    ))}
+
+              {step.stepType === "EMAIL" ? (
+                <>
+                  <div>
+                    <label className="block text-xs text-zinc-500 mb-1">Subject Line</label>
+                    <input
+                      value={step.subject}
+                      onChange={(e) => updateStep(activeStep, "subject", e.target.value)}
+                      className="input w-full text-sm"
+                      placeholder="Quick question, {{first_name}}"
+                    />
                   </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs text-zinc-500">Body</label>
+                      <div className="flex gap-1">
+                        {TAGS.map((tag) => (
+                          <button
+                            key={tag}
+                            onClick={() => insertTag(tag)}
+                            className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded transition-colors"
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <textarea
+                      id={`step-body-${activeStep}`}
+                      value={step.body}
+                      onChange={(e) => updateStep(activeStep, "body", e.target.value)}
+                      className="input w-full text-sm resize-none h-40"
+                      placeholder="Hi {{first_name}},&#10;&#10;..."
+                    />
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label className="block text-xs text-zinc-500 mb-1">
+                    {step.stepType === "CALL" ? "Call Script / Talking Points" : "Notes / Instructions"}
+                  </label>
+                  <textarea
+                    id={`step-body-${activeStep}`}
+                    value={step.body}
+                    onChange={(e) => updateStep(activeStep, "body", e.target.value)}
+                    className="input w-full text-sm resize-none h-40"
+                    placeholder={
+                      step.stepType === "LINKEDIN_CONNECT"
+                        ? "Send a connection request mentioning..."
+                        : step.stepType === "LINKEDIN_MESSAGE"
+                        ? "Message template or talking points..."
+                        : step.stepType === "CALL"
+                        ? "Introduction: Hi, my name is...\n\nKey points to cover:\n1.\n2.\n\nCTA: ..."
+                        : "What to do for this step..."
+                    }
+                  />
                 </div>
-                <textarea
-                  id={`step-body-${activeStep}`}
-                  value={steps[activeStep].body}
-                  onChange={(e) => updateStep(activeStep, "body", e.target.value)}
-                  className="input w-full text-sm resize-none h-40"
-                  placeholder="Hi {{first_name}},&#10;&#10;..."
-                />
-              </div>
+              )}
+
               {activeStep > 0 && (
                 <button
                   onClick={() => removeStep(activeStep)}

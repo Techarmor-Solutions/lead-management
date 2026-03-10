@@ -33,8 +33,28 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const data = await req.json();
 
+  // Manual company (no placeId): always create a new record
+  if (!data.placeId) {
+    const company = await prisma.company.create({
+      data: {
+        name: data.name,
+        address: data.address || "",
+        city: data.city || "",
+        state: data.state || "",
+        zip: data.zip || "",
+        phone: data.phone || "",
+        website: data.website || "",
+        industry: data.industry || "",
+        notes: data.notes || "",
+        source: "manual",
+      },
+    });
+    return NextResponse.json(company);
+  }
+
+  // Google Places company: upsert by placeId
   const company = await prisma.company.upsert({
-    where: { placeId: data.placeId || "__no_place_id__" },
+    where: { placeId: data.placeId },
     update: {
       name: data.name,
       address: data.address || "",
@@ -54,7 +74,7 @@ export async function POST(req: NextRequest) {
       website: data.website || "",
       rating: data.rating,
       totalRatings: data.totalRatings,
-      placeId: data.placeId || null,
+      placeId: data.placeId,
     },
   });
 

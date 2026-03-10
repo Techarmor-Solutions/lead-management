@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { formatDate, pct } from "@/lib/utils";
 import CampaignActions from "./CampaignActions";
 import Link from "next/link";
-import { ArrowLeft, Users, Mail, Clock } from "lucide-react";
+import { ArrowLeft, Users, Clock, Mail, Linkedin, Phone, CheckSquare, MessageSquare } from "lucide-react";
+import type { StepType } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -72,23 +73,35 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Steps */}
         <div>
-          <h2 className="font-semibold text-white mb-3">Email Steps ({campaign.steps.length})</h2>
+          <h2 className="font-semibold text-white mb-3">Steps ({campaign.steps.length})</h2>
           <div className="space-y-3">
             {campaign.steps.map((step) => (
               <div key={step.id} className="bg-[#1a1a1a] border border-zinc-800 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-medium text-white">
+                  <div className="flex items-center gap-2 text-sm font-medium text-white">
+                    <StepTypeIcon type={step.stepType} />
                     Step {step.stepNumber}: {step.label}
                   </div>
-                  {step.delayDays > 0 && (
-                    <div className="flex items-center gap-1 text-xs text-zinc-500">
-                      <Clock className="w-3 h-3" />
-                      +{step.delayDays}d
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <StepTypeBadge type={step.stepType} />
+                    {step.delayDays > 0 && (
+                      <div className="flex items-center gap-1 text-xs text-zinc-500">
+                        <Clock className="w-3 h-3" />
+                        +{step.delayDays}d
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="text-xs font-medium text-zinc-400 mb-1">{step.subject}</div>
-                <div className="text-xs text-zinc-500 whitespace-pre-wrap line-clamp-4">{step.body}</div>
+                {step.stepType === "EMAIL" ? (
+                  <>
+                    <div className="text-xs font-medium text-zinc-400 mb-1">{step.subject}</div>
+                    <div className="text-xs text-zinc-500 whitespace-pre-wrap line-clamp-4">{step.body}</div>
+                  </>
+                ) : (
+                  step.body && (
+                    <div className="text-xs text-zinc-500 whitespace-pre-wrap line-clamp-4">{step.body}</div>
+                  )
+                )}
               </div>
             ))}
           </div>
@@ -133,6 +146,43 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
         </div>
       </div>
     </div>
+  );
+}
+
+function StepTypeIcon({ type }: { type: string }) {
+  const cls = "w-3.5 h-3.5";
+  switch (type) {
+    case "EMAIL": return <Mail className={`${cls} text-blue-400`} />;
+    case "LINKEDIN_CONNECT": return <Linkedin className={`${cls} text-sky-400`} />;
+    case "LINKEDIN_MESSAGE": return <MessageSquare className={`${cls} text-sky-400`} />;
+    case "CALL": return <Phone className={`${cls} text-green-400`} />;
+    case "TASK": return <CheckSquare className={`${cls} text-amber-400`} />;
+    default: return <Mail className={cls} />;
+  }
+}
+
+const STEP_TYPE_LABELS: Record<string, string> = {
+  EMAIL: "Email",
+  LINKEDIN_CONNECT: "LinkedIn Connect",
+  LINKEDIN_MESSAGE: "LinkedIn Message",
+  CALL: "Cold Call",
+  TASK: "Task",
+};
+
+const STEP_TYPE_COLORS: Record<string, string> = {
+  EMAIL: "bg-blue-900/30 text-blue-400",
+  LINKEDIN_CONNECT: "bg-sky-900/30 text-sky-400",
+  LINKEDIN_MESSAGE: "bg-sky-900/30 text-sky-400",
+  CALL: "bg-green-900/30 text-green-400",
+  TASK: "bg-amber-900/30 text-amber-400",
+};
+
+function StepTypeBadge({ type }: { type: StepType }) {
+  if (type === "EMAIL") return null;
+  return (
+    <span className={`text-xs px-1.5 py-0.5 rounded ${STEP_TYPE_COLORS[type] || "bg-zinc-800 text-zinc-400"}`}>
+      {STEP_TYPE_LABELS[type] || type}
+    </span>
   );
 }
 

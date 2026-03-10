@@ -5,6 +5,7 @@ export const anthropic = new Anthropic({
 });
 
 export const MODEL = "claude-sonnet-4-6";
+const ENRICH_MODEL = "claude-haiku-4-5-20251001";
 
 export interface EnrichmentResult {
   contacts: {
@@ -49,10 +50,10 @@ Required JSON schema (use empty string if unknown):
   ];
 
   // Agentic loop — Claude may call web_search multiple times before producing the final JSON
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 4; i++) {
     const response = await anthropic.messages.create({
-      model: MODEL,
-      max_tokens: 4000,
+      model: ENRICH_MODEL,
+      max_tokens: 1024,
       tools: [{ type: "web_search_20250305", name: "web_search" } as never],
       messages,
     });
@@ -77,18 +78,9 @@ Required JSON schema (use empty string if unknown):
     }
 
     if (response.stop_reason === "tool_use") {
-      // Add assistant message with tool calls, then add tool results
+      // For server-side tools (web_search), results are already embedded in response.content
       messages.push({ role: "assistant", content: response.content });
-
-      const toolResults: Anthropic.ToolResultBlockParam[] = response.content
-        .filter((b) => b.type === "tool_use")
-        .map((b) => ({
-          type: "tool_result" as const,
-          tool_use_id: (b as Anthropic.ToolUseBlock).id,
-          content: "",
-        }));
-
-      messages.push({ role: "user", content: toolResults });
+      messages.push({ role: "user", content: "Please continue." });
       continue;
     }
 

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { formatDate } from "@/lib/utils";
 import CompanyEnrichButton from "./CompanyEnrichButton";
 import ContactCard from "./ContactCard";
+import AddContactButton from "./AddContactButton";
 import Link from "next/link";
 import { Globe, Phone, MapPin, Star, ArrowLeft, Building2 } from "lucide-react";
 
@@ -95,6 +96,7 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold text-white">Contacts ({company.contacts.length})</h2>
+          <AddContactButton companyId={id} />
         </div>
         {company.contacts.length === 0 ? (
           <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl py-10 text-center text-zinc-500">
