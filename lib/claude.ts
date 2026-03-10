@@ -5,7 +5,6 @@ export const anthropic = new Anthropic({
 });
 
 export const MODEL = "claude-sonnet-4-6";
-const ENRICH_MODEL = "claude-haiku-4-5-20251001";
 
 export interface EnrichmentResult {
   contacts: {
@@ -25,7 +24,9 @@ export interface EnrichmentResult {
 export async function enrichCompany(
   companyName: string,
   website: string,
-  industry: string
+  industry: string,
+  city?: string,
+  state?: string
 ): Promise<EnrichmentResult> {
   const empty: EnrichmentResult = {
     contacts: [],
@@ -35,25 +36,43 @@ export async function enrichCompany(
     techStack: "",
   };
 
+  const location = [city, state].filter(Boolean).join(", ");
+
   const messages: Anthropic.MessageParam[] = [
     {
       role: "user",
-      content: `Search the web and research the company "${companyName}" (website: ${website || "unknown"}, industry: ${industry || "unknown"}).
+      content: `You are a B2B research assistant. Use web search to find detailed information about this business.
 
-IMPORTANT: Your final response must be ONLY a raw JSON object. No markdown, no explanation, no preamble, no code fences. Start your response with { and end with }.
+Business: "${companyName}"
+${location ? `Location: ${location}` : ""}
+${website ? `Website: ${website}` : ""}
+Industry: ${industry || "unknown"}
 
-Find: decision-maker contacts (owner/CEO/marketing director), company LinkedIn URL, 2-3 sentence summary, recent news, tech stack clues.
+Your goal is to find:
+1. The owner's or decision-maker's FULL NAME, EMAIL ADDRESS, phone, and LinkedIn profile. Search their website's contact page, About page, Google Business listing, Facebook page, LinkedIn, and any press mentions.
+2. The company's LinkedIn page URL.
+3. A 2-3 sentence description of what they do.
+4. Any recent news or notable info.
+5. What software/tools/platforms they use (website builder, CRM, booking system, etc).
 
-Required JSON schema (use empty string if unknown):
-{"contacts":[{"firstName":"","lastName":"","title":"","email":"","phone":"","linkedin":""}],"companyLinkedIn":"","companySummary":"","recentNews":"","techStack":""}`,
+Search aggressively — try multiple queries like:
+- "${companyName} ${location} owner email"
+- "${companyName} contact"
+- "${companyName} site:linkedin.com"
+- "${companyName} ${location} owner name"
+
+After all searches, respond with ONLY a raw JSON object (no markdown, no explanation, no code fences):
+{"contacts":[{"firstName":"","lastName":"","title":"","email":"","phone":"","linkedin":""}],"companyLinkedIn":"","companySummary":"","recentNews":"","techStack":""}
+
+Use empty string for any field you cannot find. Include as many contacts as you find.`,
     },
   ];
 
-  // Agentic loop — Claude may call web_search multiple times before producing the final JSON
-  for (let i = 0; i < 4; i++) {
+  // Agentic loop — runs until end_turn or 8 iterations
+  for (let i = 0; i < 8; i++) {
     const response = await anthropic.messages.create({
-      model: ENRICH_MODEL,
-      max_tokens: 1024,
+      model: MODEL,
+      max_tokens: 2048,
       tools: [{ type: "web_search_20250305", name: "web_search" } as never],
       messages,
     });
@@ -61,26 +80,34 @@ Required JSON schema (use empty string if unknown):
     if (response.stop_reason === "end_turn") {
       const textBlock = response.content.find((c) => c.type === "text");
       if (!textBlock || textBlock.type !== "text") return empty;
-      const text = textBlock.text;
+      const text = textBlock.text.trim();
 
-      // Try code fence first (```json ... ``` or ``` ... ```)
       const fenceMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-      // Then try raw JSON object (greedy — find the outermost {...})
       const rawMatch = text.match(/\{[\s\S]*\}/);
       const jsonStr = fenceMatch?.[1] ?? rawMatch?.[0];
 
-      if (!jsonStr) return { ...empty, companySummary: text.slice(0, 500) };
+      if (!jsonStr) return empty;
       try {
         return JSON.parse(jsonStr);
       } catch {
-        return { ...empty, companySummary: text.slice(0, 500) };
+        return empty;
       }
     }
 
     if (response.stop_reason === "tool_use") {
-      // For server-side tools (web_search), results are already embedded in response.content
+      // Add assistant message with tool_use blocks
       messages.push({ role: "assistant", content: response.content });
-      messages.push({ role: "user", content: "Please continue." });
+      // Add empty tool_result blocks for each tool_use (web_search is server-side)
+      const toolResults = response.content
+        .filter((c): c is Anthropic.ToolUseBlock => c.type === "tool_use")
+        .map((c) => ({
+          type: "tool_result" as const,
+          tool_use_id: c.id,
+          content: "",
+        }));
+      if (toolResults.length > 0) {
+        messages.push({ role: "user", content: toolResults });
+      }
       continue;
     }
 

@@ -7,7 +7,7 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
   const company = await prisma.company.findUnique({ where: { id } });
   if (!company) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const enrichmentData = await enrichCompany(company.name, company.website, company.industry);
+  const enrichmentData = await enrichCompany(company.name, company.website, company.industry, company.city, company.state);
 
   const updated = await prisma.company.update({
     where: { id },
