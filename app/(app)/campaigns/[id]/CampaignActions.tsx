@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle, Send, Pause, Play, Trash2 } from "lucide-react";
+import { CheckCircle, Send, Pause, Play, Trash2, Plus } from "lucide-react";
+import Link from "next/link";
 
 interface Props {
-  campaign: { id: string; status: string; name: string };
+  campaign: { id: string; status: string; name: string; isTemplate?: boolean };
 }
 
 export default function CampaignActions({ campaign }: Props) {
@@ -37,6 +38,37 @@ export default function CampaignActions({ campaign }: Props) {
     setLoading(true);
     await fetch(`/api/campaigns/${campaign.id}`, { method: "DELETE" });
     router.push("/campaigns");
+  }
+
+  // Template view: just a "Use Template" link + delete
+  if (campaign.isTemplate) {
+    return (
+      <div className="flex items-center gap-2">
+        <Link
+          href={`/campaigns/new?template=${campaign.id}`}
+          className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Use Template
+        </Link>
+        {confirm === "delete" ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-zinc-400">Delete template?</span>
+            <button onClick={deleteCampaign} className="text-sm bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg transition-colors">
+              Delete
+            </button>
+            <button onClick={() => setConfirm(null)} className="text-sm text-zinc-400 hover:text-white px-2 py-1.5">Cancel</button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirm("delete")}
+            className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+    );
   }
 
   return (

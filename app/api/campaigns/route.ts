@@ -10,13 +10,14 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { name, industry, status, contactIds, steps } = await req.json();
+  const { name, industry, status, isTemplate, contactIds, steps } = await req.json();
 
   const campaign = await prisma.campaign.create({
     data: {
       name,
       industry: industry || "",
       status: status || "DRAFT",
+      isTemplate: isTemplate || false,
       steps: {
         create: steps.map(
           (step: { label: string; stepType: string; delayDays: number; subject: string; body: string }, i: number) => ({
@@ -33,22 +34,18 @@ export async function POST(req: NextRequest) {
     include: { steps: true },
   });
 
-  // Create pending send records for each contact × EMAIL step only
-  // Non-email steps are manual tasks — no automated sends
-  const emailSteps = campaign.steps.filter((s) => s.stepType === "EMAIL");
-  const sendData = [];
-  for (const contactId of contactIds) {
-    for (const step of emailSteps) {
-      sendData.push({
-        campaignId: campaign.id,
-        contactId,
-        stepId: step.id,
-      });
+  // Templates have no contacts — skip Send record creation
+  if (!isTemplate && contactIds?.length > 0) {
+    const emailSteps = campaign.steps.filter((s) => s.stepType === "EMAIL");
+    const sendData = [];
+    for (const contactId of contactIds) {
+      for (const step of emailSteps) {
+        sendData.push({ campaignId: campaign.id, contactId, stepId: step.id });
+      }
     }
-  }
-
-  if (sendData.length > 0) {
-    await prisma.send.createMany({ data: sendData, skipDuplicates: true });
+    if (sendData.length > 0) {
+      await prisma.send.createMany({ data: sendData, skipDuplicates: true });
+    }
   }
 
   return NextResponse.json(campaign);

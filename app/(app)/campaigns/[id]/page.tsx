@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { formatDate, pct } from "@/lib/utils";
 import CampaignActions from "./CampaignActions";
 import Link from "next/link";
-import { ArrowLeft, Users, Clock, Mail, Linkedin, Phone, CheckSquare, MessageSquare } from "lucide-react";
+import { ArrowLeft, Users, Clock, Mail, Linkedin, Phone, CheckSquare, MessageSquare, Copy } from "lucide-react";
 import type { StepType } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -42,15 +42,22 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
         <ArrowLeft className="w-4 h-4" /> Campaigns
       </Link>
 
+      {campaign.isTemplate && (
+        <div className="bg-purple-900/20 border border-purple-600/30 rounded-xl px-4 py-3 text-sm text-purple-300 mb-6 flex items-center gap-2">
+          <Copy className="w-4 h-4 shrink-0" />
+          This is a template — use it to quickly create campaigns with pre-filled steps.
+        </div>
+      )}
+
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">{campaign.name}</h1>
           <div className="flex items-center gap-3 mt-1 text-sm text-zinc-500">
             <span>Created {formatDate(campaign.createdAt)}</span>
-            <CampaignStatusBadge status={campaign.status} />
+            {!campaign.isTemplate && <CampaignStatusBadge status={campaign.status} />}
           </div>
         </div>
-        <CampaignActions campaign={{ id, status: campaign.status, name: campaign.name }} />
+        <CampaignActions campaign={{ id, status: campaign.status, name: campaign.name, isTemplate: campaign.isTemplate }} />
       </div>
 
       {/* Metrics */}

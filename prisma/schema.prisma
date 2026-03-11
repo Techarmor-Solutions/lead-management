@@ -121,16 +121,17 @@ model SavedSearch {
 }
 
 model Campaign {
-  id        String         @id @default(cuid())
-  name      String
-  status    CampaignStatus @default(DRAFT)
-  industry  String         @default("")
-  notes     String         @default("")
-  userId    String?
+  id         String         @id @default(cuid())
+  name       String
+  status     CampaignStatus @default(DRAFT)
+  isTemplate Boolean        @default(false)
+  industry   String         @default("")
+  notes      String         @default("")
+  userId     String?
   approvedAt DateTime?
-  sentAt    DateTime?
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  sentAt     DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
 
   steps CampaignStep[]
   sends Send[]

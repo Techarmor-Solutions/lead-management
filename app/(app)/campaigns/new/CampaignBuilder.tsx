@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Sparkles, ChevronDown, ChevronUp, Mail, Linkedin, Phone, CheckSquare, MessageSquare } from "lucide-react";
+import { Plus, Trash2, Sparkles, ChevronDown, ChevronUp, Mail, Linkedin, Phone, CheckSquare, MessageSquare, Copy } from "lucide-react";
 import { AgencyProfile, Contact } from "@prisma/client";
 
 type StepType = "EMAIL" | "LINKEDIN_CONNECT" | "LINKEDIN_MESSAGE" | "CALL" | "TASK";
@@ -26,11 +26,27 @@ interface Step {
   body: string;
 }
 
+interface TemplateStep {
+  label: string;
+  stepType: string;
+  delayDays: number;
+  subject: string;
+  body: string;
+}
+
 interface Props {
   contacts: ContactWithCompany[];
   agencyProfile: AgencyProfile | null;
   lists: ContactList[];
+  initialSteps?: TemplateStep[];
+  initialIndustry?: string;
 }
+
+const DEFAULT_STEPS: Step[] = [
+  { label: "Initial Outreach", stepType: "EMAIL", delayDays: 0, subject: "", body: "" },
+  { label: "Follow-up #1", stepType: "EMAIL", delayDays: 3, subject: "", body: "" },
+  { label: "Final Follow-up", stepType: "EMAIL", delayDays: 7, subject: "", body: "" },
+];
 
 const TAGS = ["{{first_name}}", "{{company_name}}", "{{sender_name}}"];
 
@@ -50,18 +66,25 @@ const TYPE_COLORS: Record<StepType, string> = {
   TASK: "bg-amber-600/20 text-amber-400 border-amber-600/30",
 };
 
-export default function CampaignBuilder({ contacts, agencyProfile, lists }: Props) {
+function toSteps(raw: TemplateStep[]): Step[] {
+  return raw.map((s) => ({
+    label: s.label,
+    stepType: (s.stepType as StepType) || "EMAIL",
+    delayDays: s.delayDays,
+    subject: s.subject,
+    body: s.body,
+  }));
+}
+
+export default function CampaignBuilder({ contacts, agencyProfile, lists, initialSteps, initialIndustry }: Props) {
   const router = useRouter();
+  const [mode, setMode] = useState<"campaign" | "template">("campaign");
   const [name, setName] = useState("");
-  const [industry, setIndustry] = useState("");
+  const [industry, setIndustry] = useState(initialIndustry || "");
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [contactSearch, setContactSearch] = useState("");
   const [selectedListId, setSelectedListId] = useState("");
-  const [steps, setSteps] = useState<Step[]>([
-    { label: "Initial Outreach", stepType: "EMAIL", delayDays: 0, subject: "", body: "" },
-    { label: "Follow-up #1", stepType: "EMAIL", delayDays: 3, subject: "", body: "" },
-    { label: "Final Follow-up", stepType: "EMAIL", delayDays: 7, subject: "", body: "" },
-  ]);
+  const [steps, setSteps] = useState<Step[]>(initialSteps ? toSteps(initialSteps) : DEFAULT_STEPS);
   const [activeStep, setActiveStep] = useState(0);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -170,7 +193,6 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists }: Prop
 
     const data = await res.json();
     if (data.steps) {
-      // Apply AI copy only to EMAIL steps
       let emailIdx = 0;
       setSteps((prev) =>
         prev.map((step) => {
@@ -188,7 +210,6 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists }: Prop
     if (!name.trim()) { alert("Campaign name required"); return; }
     if (selectedContactIds.size === 0) { alert("Select at least one contact"); return; }
 
-    // Validate email steps have subject + body
     const invalidEmail = steps.find((s) => s.stepType === "EMAIL" && (!s.subject.trim() || !s.body.trim()));
     if (invalidEmail) {
       alert(`Email step "${invalidEmail.label}" needs a subject and body.`);
@@ -205,16 +226,69 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists }: Prop
     router.push(`/campaigns/${data.id}`);
   }
 
+  async function handleSaveTemplate() {
+    if (!name.trim()) { alert("Template name required"); return; }
+
+    const invalidEmail = steps.find((s) => s.stepType === "EMAIL" && (!s.subject.trim() || !s.body.trim()));
+    if (invalidEmail) {
+      alert(`Email step "${invalidEmail.label}" needs a subject and body.`);
+      return;
+    }
+
+    setSaving(true);
+    const res = await fetch("/api/campaigns", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, industry, status: "DRAFT", isTemplate: true, contactIds: [], steps }),
+    });
+    const data = await res.json();
+    router.push(`/campaigns/${data.id}`);
+  }
+
   const step = steps[activeStep];
 
   return (
     <div className="space-y-6">
+      {/* Mode toggle */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setMode("campaign")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            mode === "campaign" ? "bg-blue-600 text-white" : "bg-zinc-800 text-zinc-400 hover:text-white"
+          }`}
+        >
+          Campaign
+        </button>
+        <button
+          onClick={() => setMode("template")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            mode === "template" ? "bg-purple-600 text-white" : "bg-zinc-800 text-zinc-400 hover:text-white"
+          }`}
+        >
+          <Copy className="w-3.5 h-3.5" />
+          Save as Template
+        </button>
+      </div>
+
+      {mode === "template" && (
+        <div className="bg-purple-900/20 border border-purple-600/30 rounded-xl px-4 py-3 text-sm text-purple-300">
+          Template mode: no contacts needed. Save the sequence to reuse later when creating campaigns.
+        </div>
+      )}
+
       {/* Campaign Name */}
       <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl p-5">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm text-zinc-400 mb-1.5">Campaign Name</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} className="input w-full" placeholder="Q1 Outreach — Restaurants" />
+            <label className="block text-sm text-zinc-400 mb-1.5">
+              {mode === "template" ? "Template Name" : "Campaign Name"}
+            </label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="input w-full"
+              placeholder={mode === "template" ? "e.g. Restaurant Outreach Sequence" : "Q1 Outreach — Restaurants"}
+            />
           </div>
           <div>
             <label className="block text-sm text-zinc-400 mb-1.5">Industry (for AI copy)</label>
@@ -223,66 +297,68 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists }: Prop
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Contact Selector */}
-        <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-white">Contacts ({selectedContactIds.size} selected)</h3>
-            {lists.length > 0 && (
-              <select
-                value={selectedListId}
-                onChange={(e) => { setSelectedListId(e.target.value); if (e.target.value) importFromList(e.target.value); }}
-                className="input text-xs py-1 px-2"
-              >
-                <option value="">Import from list…</option>
-                {lists.map((l) => (
-                  <option key={l.id} value={l.id}>{l.name} ({l._count.members})</option>
-                ))}
-              </select>
-            )}
-          </div>
-          <input
-            value={contactSearch}
-            onChange={(e) => setContactSearch(e.target.value)}
-            className="input w-full mb-3"
-            placeholder="Search contacts..."
-          />
-          <div className="space-y-1 max-h-72 overflow-y-auto">
-            {filteredContacts.length === 0 && (
-              <p className="text-sm text-zinc-500 text-center py-4">No contacts found</p>
-            )}
-            {filteredContacts.map((c) => {
-              const isDNC = c.status === "DO_NOT_CONTACT";
-              const noEmail = !c.email;
-              const disabled = isDNC || noEmail;
-              return (
-                <label
-                  key={c.id}
-                  className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition-colors ${
-                    disabled ? "opacity-40 cursor-not-allowed" : "hover:bg-zinc-800/50 cursor-pointer"
-                  }`}
-                  title={isDNC ? "Do Not Contact — cannot add to campaign" : noEmail ? "No email address — add one first" : undefined}
+      <div className={`grid gap-6 ${mode === "campaign" ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"}`}>
+        {/* Contact Selector — only in campaign mode */}
+        {mode === "campaign" && (
+          <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-white">Contacts ({selectedContactIds.size} selected)</h3>
+              {lists.length > 0 && (
+                <select
+                  value={selectedListId}
+                  onChange={(e) => { setSelectedListId(e.target.value); if (e.target.value) importFromList(e.target.value); }}
+                  className="input text-xs py-1 px-2"
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedContactIds.has(c.id)}
-                    onChange={() => !disabled && toggleContact(c.id)}
-                    disabled={disabled}
-                    className="w-4 h-4 rounded accent-blue-500 disabled:cursor-not-allowed"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm text-white truncate flex items-center gap-2">
-                      {[c.firstName, c.lastName].filter(Boolean).join(" ") || "(no name)"}
-                      {isDNC && <span className="text-xs text-red-400 bg-red-950/40 px-1.5 py-0.5 rounded">DNC</span>}
-                      {noEmail && <span className="text-xs text-zinc-500 bg-zinc-800 px-1.5 py-0.5 rounded">no email</span>}
+                  <option value="">Import from list…</option>
+                  {lists.map((l) => (
+                    <option key={l.id} value={l.id}>{l.name} ({l._count.members})</option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <input
+              value={contactSearch}
+              onChange={(e) => setContactSearch(e.target.value)}
+              className="input w-full mb-3"
+              placeholder="Search contacts..."
+            />
+            <div className="space-y-1 max-h-72 overflow-y-auto">
+              {filteredContacts.length === 0 && (
+                <p className="text-sm text-zinc-500 text-center py-4">No contacts found</p>
+              )}
+              {filteredContacts.map((c) => {
+                const isDNC = c.status === "DO_NOT_CONTACT";
+                const noEmail = !c.email;
+                const disabled = isDNC || noEmail;
+                return (
+                  <label
+                    key={c.id}
+                    className={`flex items-center gap-3 px-2 py-1.5 rounded-lg transition-colors ${
+                      disabled ? "opacity-40 cursor-not-allowed" : "hover:bg-zinc-800/50 cursor-pointer"
+                    }`}
+                    title={isDNC ? "Do Not Contact" : noEmail ? "No email address" : undefined}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedContactIds.has(c.id)}
+                      onChange={() => !disabled && toggleContact(c.id)}
+                      disabled={disabled}
+                      className="w-4 h-4 rounded accent-blue-500 disabled:cursor-not-allowed"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm text-white truncate flex items-center gap-2">
+                        {[c.firstName, c.lastName].filter(Boolean).join(" ") || "(no name)"}
+                        {isDNC && <span className="text-xs text-red-400 bg-red-950/40 px-1.5 py-0.5 rounded">DNC</span>}
+                        {noEmail && <span className="text-xs text-zinc-500 bg-zinc-800 px-1.5 py-0.5 rounded">no email</span>}
+                      </div>
+                      <div className="text-xs text-zinc-500 truncate">{c.email || "—"} · {c.company.name}</div>
                     </div>
-                    <div className="text-xs text-zinc-500 truncate">{c.email || "—"} · {c.company.name}</div>
-                  </div>
-                </label>
-              );
-            })}
+                  </label>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Step Editor */}
         <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl p-5">
@@ -332,7 +408,6 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists }: Prop
           {/* Active step form */}
           {step && (
             <div className="space-y-3">
-              {/* Step type selector */}
               <div>
                 <label className="block text-xs text-zinc-500 mb-1.5">Step Type</label>
                 <div className="flex flex-wrap gap-1.5">
@@ -452,20 +527,33 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists }: Prop
 
       {/* Actions */}
       <div className="flex items-center gap-3">
-        <button
-          onClick={() => handleSave("DRAFT")}
-          disabled={saving}
-          className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50"
-        >
-          Save as Draft
-        </button>
-        <button
-          onClick={() => handleSave("READY")}
-          disabled={saving}
-          className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-        >
-          {saving ? "Saving..." : "Mark as Ready for Review"}
-        </button>
+        {mode === "campaign" ? (
+          <>
+            <button
+              onClick={() => handleSave("DRAFT")}
+              disabled={saving}
+              className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50"
+            >
+              Save as Draft
+            </button>
+            <button
+              onClick={() => handleSave("READY")}
+              disabled={saving}
+              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Mark as Ready for Review"}
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={handleSaveTemplate}
+            disabled={saving}
+            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            <Copy className="w-4 h-4" />
+            {saving ? "Saving..." : "Save Template"}
+          </button>
+        )}
       </div>
     </div>
   );

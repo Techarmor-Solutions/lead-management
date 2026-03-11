@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { formatDate, pct } from "@/lib/utils";
-import { Plus, Mail } from "lucide-react";
+import { Plus, Mail, Copy } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function CampaignsPage() {
-  const campaigns = await prisma.campaign.findMany({
+  const all = await prisma.campaign.findMany({
     orderBy: { createdAt: "desc" },
     include: {
       _count: { select: { steps: true, sends: true } },
@@ -16,12 +16,15 @@ export default async function CampaignsPage() {
     },
   });
 
+  const templates = all.filter((c) => c.isTemplate);
+  const campaigns = all.filter((c) => !c.isTemplate);
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white">Campaigns</h1>
-          <p className="text-zinc-500 text-sm mt-1">{campaigns.length} campaigns</p>
+          <p className="text-zinc-500 text-sm mt-1">{campaigns.length} campaigns · {templates.length} templates</p>
         </div>
         <Link
           href="/campaigns/new"
@@ -32,6 +35,41 @@ export default async function CampaignsPage() {
         </Link>
       </div>
 
+      {/* Templates section */}
+      {templates.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <Copy className="w-3.5 h-3.5" />
+            Templates
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {templates.map((t) => (
+              <div key={t.id} className="bg-[#1a1a1a] border border-zinc-800 rounded-xl p-4 flex flex-col gap-3">
+                <div>
+                  <Link href={`/campaigns/${t.id}`} className="font-medium text-white hover:text-purple-400 transition-colors">
+                    {t.name}
+                  </Link>
+                  <div className="text-xs text-zinc-500 mt-0.5">
+                    {t._count.steps} step{t._count.steps !== 1 ? "s" : ""} · created {formatDate(t.createdAt)}
+                  </div>
+                  {t.industry && (
+                    <div className="text-xs text-zinc-600 mt-0.5">{t.industry}</div>
+                  )}
+                </div>
+                <Link
+                  href={`/campaigns/new?template=${t.id}`}
+                  className="flex items-center justify-center gap-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/30 text-purple-400 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Use Template
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Campaigns table */}
       <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl overflow-hidden">
         {campaigns.length === 0 ? (
           <div className="py-16 text-center text-zinc-500">
