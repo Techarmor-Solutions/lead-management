@@ -69,8 +69,32 @@ model Contact {
   company         Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
   sends           Send[]
   listMemberships ContactListMember[]
+  activities      Activity[]
 
   @@map("contacts")
+}
+
+model Activity {
+  id        String       @id @default(cuid())
+  contactId String
+  type      ActivityType
+  date      DateTime     @default(now())
+  notes     String       @default("")
+  outcome   String       @default("")
+  createdAt DateTime     @default(now())
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@map("activities")
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  LINKEDIN
+  MEETING
+  TEXT
+  NOTE
 }
 
 enum ContactStatus {

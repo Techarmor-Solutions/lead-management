@@ -21,6 +21,9 @@ export default async function ContactProfilePage({ params }: { params: Promise<{
           step: { select: { label: true, stepNumber: true, stepType: true } },
         },
       },
+      activities: {
+        orderBy: { date: "desc" },
+      },
     },
   });
 

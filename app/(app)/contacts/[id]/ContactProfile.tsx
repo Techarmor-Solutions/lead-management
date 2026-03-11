@@ -6,6 +6,7 @@ import {
   ArrowLeft, Mail, Phone, Linkedin, Building2, ListChecks,
   Edit2, Check, X, ExternalLink,
 } from "lucide-react";
+import ActivityLog, { Activity } from "./ActivityLog";
 
 const STATUS_OPTIONS = [
   "NEW", "CONTACTED", "RESPONDED", "QUALIFIED", "CLOSED", "NOT_INTERESTED", "DO_NOT_CONTACT",
@@ -61,6 +62,7 @@ interface Contact {
   company: { id: string; name: string; website: string; industry: string };
   listMemberships: { list: { id: string; name: string } }[];
   sends: Send[];
+  activities: Activity[];
 }
 
 function Field({
@@ -308,6 +310,9 @@ export default function ContactProfile({ contact }: { contact: Contact }) {
               placeholder="Add notes about this contact..."
             />
           </div>
+
+          {/* Activity log */}
+          <ActivityLog contactId={contact.id} initial={contact.activities} />
 
           {/* Campaigns */}
           <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl p-5">
