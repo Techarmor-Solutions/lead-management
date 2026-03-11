@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Mail, Linkedin, ChevronLeft, ChevronRight, Users } from "lucide-react";
+import { Mail, Linkedin, ChevronLeft, ChevronRight, Users, Upload } from "lucide-react";
+import CsvImportModal from "@/components/CsvImportModal";
 import StatusBadge from "@/components/StatusBadge";
 import { ContactStatus } from "@prisma/client";
 
@@ -42,6 +43,7 @@ interface Props {
 export default function ContactsTable({ contacts, total, page, limit, search: initialSearch, statusFilter }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState(initialSearch);
+  const [showImport, setShowImport] = useState(false);
   const totalPages = Math.ceil(total / limit);
 
   function navigate(newSearch?: string, newStatus?: string, newPage?: number) {
@@ -63,6 +65,8 @@ export default function ContactsTable({ contacts, total, page, limit, search: in
 
   return (
     <div>
+      {showImport && <CsvImportModal type="contacts" onClose={() => setShowImport(false)} />}
+
       {/* Filters */}
       <div className="flex gap-2 mb-4 flex-wrap">
         <form
@@ -79,6 +83,13 @@ export default function ContactsTable({ contacts, total, page, limit, search: in
             Search
           </button>
         </form>
+        <button
+          onClick={() => setShowImport(true)}
+          className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+        >
+          <Upload className="w-4 h-4" />
+          Import CSV
+        </button>
         <select
           value={statusFilter}
           onChange={(e) => navigate(undefined, e.target.value, 1)}

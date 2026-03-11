@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Building2, Users, Globe, MapPin, Star, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
+import { Building2, Users, Globe, MapPin, Star, ChevronLeft, ChevronRight, Plus, X, Upload } from "lucide-react";
+import CsvImportModal from "@/components/CsvImportModal";
 
 interface Company {
   id: string;
@@ -51,6 +52,7 @@ export default function CompanyList({
   const router = useRouter();
   const [search, setSearch] = useState(initialSearch);
   const [showModal, setShowModal] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const totalPages = Math.ceil(total / limit);
@@ -127,6 +129,13 @@ export default function CompanyList({
           </button>
         )}
 
+        <button
+          onClick={() => setShowImport(true)}
+          className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+        >
+          <Upload className="w-4 h-4" />
+          Import CSV
+        </button>
         <button
           onClick={() => setShowModal(true)}
           className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -223,6 +232,8 @@ export default function CompanyList({
           </>
         )}
       </div>
+
+      {showImport && <CsvImportModal type="companies" onClose={() => setShowImport(false)} />}
 
       {/* Add Company Modal */}
       {showModal && (
