@@ -208,12 +208,14 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
 
   async function handleSave(status: "DRAFT" | "READY") {
     if (!name.trim()) { alert("Campaign name required"); return; }
-    if (selectedContactIds.size === 0) { alert("Select at least one contact"); return; }
+    if (status === "READY" && selectedContactIds.size === 0) { alert("Select at least one contact"); return; }
 
-    const invalidEmail = steps.find((s) => s.stepType === "EMAIL" && (!s.subject.trim() || !s.body.trim()));
-    if (invalidEmail) {
-      alert(`Email step "${invalidEmail.label}" needs a subject and body.`);
-      return;
+    if (status === "READY") {
+      const invalidEmail = steps.find((s) => s.stepType === "EMAIL" && (!s.subject.trim() || !s.body.trim()));
+      if (invalidEmail) {
+        alert(`Email step "${invalidEmail.label}" needs a subject and body.`);
+        return;
+      }
     }
 
     setSaving(true);
