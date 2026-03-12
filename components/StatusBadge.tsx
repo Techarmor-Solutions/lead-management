@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 const statusConfig: Record<ContactStatus, { label: string; className: string }> = {
   NEW: { label: "New", className: "bg-zinc-800 text-zinc-400" },
-  CONTACTED: { label: "Contacted", className: "bg-blue-900/40 text-blue-400" },
+  CONTACTED: { label: "Contacted", className: "bg-[#eb9447]/15 text-[#eb9447]" },
   RESPONDED: { label: "Responded", className: "bg-green-900/40 text-green-400" },
   QUALIFIED: { label: "Qualified", className: "bg-purple-900/40 text-purple-400" },
   CLOSED: { label: "Closed", className: "bg-emerald-900/40 text-emerald-400" },

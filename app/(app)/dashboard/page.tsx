@@ -30,7 +30,7 @@ export default async function DashboardPage() {
   const totalSent = recentSends._count.id;
 
   const stats = [
-    { label: "Companies", value: companyCount, icon: Building2, href: "/companies", color: "text-blue-400" },
+    { label: "Companies", value: companyCount, icon: Building2, href: "/companies", color: "text-[#eb9447]" },
     { label: "Contacts", value: contactCount, icon: Users, href: "/contacts", color: "text-purple-400" },
     { label: "Emails Sent", value: totalSent, icon: Mail, href: "/campaigns", color: "text-green-400" },
     {
@@ -74,7 +74,7 @@ export default async function DashboardPage() {
       <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
           <h2 className="font-semibold text-white">Recent Campaigns</h2>
-          <Link href="/campaigns" className="text-sm text-blue-400 hover:text-blue-300">
+          <Link href="/campaigns" className="text-sm text-[#eb9447] hover:text-[#f0a86a]">
             View all →
           </Link>
         </div>
@@ -82,7 +82,7 @@ export default async function DashboardPage() {
           <div className="px-5 py-10 text-center text-zinc-500">
             <Mail className="w-8 h-8 mx-auto mb-3 opacity-30" />
             <p>No campaigns yet</p>
-            <Link href="/campaigns/new" className="text-sm text-blue-400 hover:text-blue-300 mt-2 inline-block">
+            <Link href="/campaigns/new" className="text-sm text-[#eb9447] hover:text-[#f0a86a] mt-2 inline-block">
               Create your first campaign →
             </Link>
           </div>
@@ -114,7 +114,7 @@ export default async function DashboardPage() {
 function CampaignStatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     DRAFT: "bg-zinc-800 text-zinc-400",
-    READY: "bg-blue-900/40 text-blue-400",
+    READY: "bg-[#eb9447]/15 text-[#eb9447]",
     APPROVED: "bg-green-900/40 text-green-400",
     SENDING: "bg-amber-900/40 text-amber-400",
     ACTIVE: "bg-green-900/40 text-green-400",

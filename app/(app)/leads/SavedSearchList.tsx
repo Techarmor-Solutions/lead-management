@@ -56,7 +56,7 @@ export default function SavedSearchList({ savedSearches: initial }: Props) {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => runSearch(s)}
-                      className="p-1.5 text-zinc-500 hover:text-blue-400 hover:bg-blue-900/20 rounded-lg transition-colors"
+                      className="p-1.5 text-zinc-500 hover:text-[#eb9447] hover:bg-[#eb9447]/10 rounded-lg transition-colors"
                       title="Run search"
                     >
                       <Play className="w-3.5 h-3.5" />

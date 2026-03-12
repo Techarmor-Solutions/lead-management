@@ -122,13 +122,13 @@ export default function ContactsTable({ contacts, total, page, limit, search: in
                 {contacts.map((c) => (
                   <tr key={c.id} className={`hover:bg-zinc-800/20 transition-colors ${c.status === "DO_NOT_CONTACT" ? "opacity-50" : ""}`}>
                     <td className="px-5 py-3">
-                      <Link href={`/contacts/${c.id}`} className="font-medium text-white hover:text-blue-400 transition-colors">
+                      <Link href={`/contacts/${c.id}`} className="font-medium text-white hover:text-[#eb9447] transition-colors">
                         {[c.firstName, c.lastName].filter(Boolean).join(" ") || "Unknown"}
                       </Link>
                       {c.title && <div className="text-xs text-zinc-500">{c.title}</div>}
                     </td>
                     <td className="px-5 py-3">
-                      <Link href={`/companies/${c.company.id}`} className="text-blue-400 hover:text-blue-300 text-xs">
+                      <Link href={`/companies/${c.company.id}`} className="text-[#eb9447] hover:text-[#f0a86a] text-xs">
                         {c.company.name}
                       </Link>
                     </td>
@@ -141,7 +141,7 @@ export default function ContactsTable({ contacts, total, page, limit, search: in
                           </a>
                         )}
                         {c.linkedin && (
-                          <a href={c.linkedin} target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-blue-400">
+                          <a href={c.linkedin} target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-[#eb9447]">
                             <Linkedin className="w-3.5 h-3.5" />
                           </a>
                         )}

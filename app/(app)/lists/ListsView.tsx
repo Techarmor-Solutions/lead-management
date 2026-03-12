@@ -53,7 +53,7 @@ export default function ListsView({ lists }: { lists: List[] }) {
         </div>
         <button
           onClick={() => setShowNew(true)}
-          className="flex items-center gap-2 text-sm bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-colors"
+          className="flex items-center gap-2 text-sm bg-[#eb9447] hover:bg-[#d4833a] text-white px-4 py-2 rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" />
           New List
@@ -89,7 +89,7 @@ export default function ListsView({ lists }: { lists: List[] }) {
               <button
                 onClick={createList}
                 disabled={saving || !name.trim()}
-                className="text-sm bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                className="text-sm bg-[#eb9447] hover:bg-[#d4833a] text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
               >
                 {saving ? "Creating..." : "Create List"}
               </button>
@@ -120,7 +120,7 @@ export default function ListsView({ lists }: { lists: List[] }) {
             className="bg-[#1a1a1a] border border-zinc-800 hover:border-zinc-700 rounded-xl p-5 transition-colors"
           >
             <div className="flex items-start justify-between mb-2">
-              <a href={`/lists/${list.id}`} className="font-semibold text-white hover:text-blue-400 transition-colors">
+              <a href={`/lists/${list.id}`} className="font-semibold text-white hover:text-[#eb9447] transition-colors">
                 {list.name}
               </a>
               <button
@@ -140,7 +140,7 @@ export default function ListsView({ lists }: { lists: List[] }) {
               </span>
               <a
                 href={`/lists/${list.id}`}
-                className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                className="text-xs text-[#eb9447] hover:text-[#f0a86a] transition-colors"
               >
                 View →
               </a>

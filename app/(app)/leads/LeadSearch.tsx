@@ -138,7 +138,7 @@ export default function LeadSearch() {
           onClick={() => setShowFilters(!showFilters)}
           className={`flex items-center gap-1.5 text-xs mb-3 px-2 py-1 rounded-lg transition-colors ${
             hasActiveFilters
-              ? "text-blue-400 bg-blue-900/20"
+              ? "text-[#eb9447] bg-[#eb9447]/10"
               : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
           }`}
         >
@@ -222,7 +222,7 @@ export default function LeadSearch() {
           <button
             type="submit"
             disabled={loading}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-2 bg-[#eb9447] hover:bg-[#d4833a] disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             <Search className="w-4 h-4" />
             {loading ? "Searching..." : "Search"}
@@ -261,7 +261,7 @@ export default function LeadSearch() {
                       <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{place.phone}</span>
                     )}
                     {place.website ? (
-                      <a href={place.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-400 hover:text-blue-300">
+                      <a href={place.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[#eb9447] hover:text-[#f0a86a]">
                         <Globe className="w-3 h-3" />Website
                       </a>
                     ) : (
@@ -318,7 +318,7 @@ export default function LeadSearch() {
               <button onClick={() => setShowSaveModal(false)} className="px-3 py-2 text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors">
                 Cancel
               </button>
-              <button onClick={saveSearch} className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors">
+              <button onClick={saveSearch} className="px-3 py-2 text-sm bg-[#eb9447] hover:bg-[#d4833a] text-white rounded-lg transition-colors">
                 Save
               </button>
             </div>

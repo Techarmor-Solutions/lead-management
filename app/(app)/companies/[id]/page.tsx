@@ -43,7 +43,7 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
               </span>
             )}
             {company.website && (
-              <a href={company.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-400 hover:text-blue-300">
+              <a href={company.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[#eb9447] hover:text-[#f0a86a]">
                 <Globe className="w-4 h-4" />
                 {company.website.replace(/^https?:\/\//, "").split("/")[0]}
               </a>
@@ -70,7 +70,7 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
             {!!enrichment.companyLinkedIn && (
               <div>
                 <span className="text-zinc-500">LinkedIn: </span>
-                <a href={String(enrichment.companyLinkedIn)} target="_blank" rel="noopener noreferrer" className="text-blue-400">
+                <a href={String(enrichment.companyLinkedIn)} target="_blank" rel="noopener noreferrer" className="text-[#eb9447]">
                   View Profile
                 </a>
               </div>

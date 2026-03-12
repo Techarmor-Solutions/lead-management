@@ -16,7 +16,7 @@ export interface Activity {
 
 const TYPES: { value: ActivityType; label: string; icon: React.ReactNode; color: string }[] = [
   { value: "CALL",     label: "Call",     icon: <Phone className="w-3.5 h-3.5" />,         color: "text-green-400 bg-green-600/10" },
-  { value: "EMAIL",    label: "Email",    icon: <Mail className="w-3.5 h-3.5" />,          color: "text-blue-400 bg-blue-600/10" },
+  { value: "EMAIL",    label: "Email",    icon: <Mail className="w-3.5 h-3.5" />,          color: "text-[#eb9447] bg-[#eb9447]/10" },
   { value: "LINKEDIN", label: "LinkedIn", icon: <Linkedin className="w-3.5 h-3.5" />,      color: "text-sky-400 bg-sky-600/10" },
   { value: "MEETING",  label: "Meeting",  icon: <Users className="w-3.5 h-3.5" />,         color: "text-purple-400 bg-purple-600/10" },
   { value: "TEXT",     label: "Text",     icon: <MessageSquare className="w-3.5 h-3.5" />, color: "text-amber-400 bg-amber-600/10" },
@@ -150,7 +150,7 @@ export default function ActivityLog({ contactId, initial }: { contactId: string;
             <button
               onClick={logActivity}
               disabled={saving}
-              className="text-sm bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+              className="text-sm bg-[#eb9447] hover:bg-[#d4833a] text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
             >
               {saving ? "Saving..." : "Save"}
             </button>

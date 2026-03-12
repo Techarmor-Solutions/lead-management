@@ -14,7 +14,7 @@ const STATUS_OPTIONS = [
 
 const STATUS_COLORS: Record<string, string> = {
   NEW: "bg-zinc-700 text-zinc-300",
-  CONTACTED: "bg-blue-600/20 text-blue-400",
+  CONTACTED: "bg-[#eb9447]/15 text-[#eb9447]",
   RESPONDED: "bg-purple-600/20 text-purple-400",
   QUALIFIED: "bg-green-600/20 text-green-400",
   CLOSED: "bg-green-700/30 text-green-300",
@@ -24,7 +24,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const SEND_STATUS_COLORS: Record<string, string> = {
   PENDING: "text-zinc-500",
-  SCHEDULED: "text-blue-400",
+  SCHEDULED: "text-[#eb9447]",
   SENT: "text-zinc-300",
   OPENED: "text-purple-400",
   CLICKED: "text-green-400",
@@ -116,7 +116,7 @@ function Field({
             {value ? (
               href ? (
                 <a href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer"
-                  className="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 truncate">
+                  className="text-sm text-[#eb9447] hover:text-[#f0a86a] transition-colors flex items-center gap-1 truncate">
                   {value}
                   {href.startsWith("http") && <ExternalLink className="w-3 h-3 flex-shrink-0" />}
                 </a>
@@ -297,7 +297,7 @@ export default function ContactProfile({ contact }: { contact: Contact }) {
                 <button
                   onClick={saveNotes}
                   disabled={savingNotes}
-                  className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded-lg transition-colors disabled:opacity-50"
+                  className="text-xs bg-[#eb9447] hover:bg-[#d4833a] text-white px-3 py-1 rounded-lg transition-colors disabled:opacity-50"
                 >
                   {savingNotes ? "Saving..." : "Save"}
                 </button>
@@ -324,7 +324,7 @@ export default function ContactProfile({ contact }: { contact: Contact }) {
                 {campaigns.map((camp) => (
                   <div key={camp.id} className="border border-zinc-800 rounded-lg p-3">
                     <div className="flex items-center justify-between mb-2">
-                      <a href={`/campaigns/${camp.id}`} className="text-sm font-medium text-white hover:text-blue-400 transition-colors">
+                      <a href={`/campaigns/${camp.id}`} className="text-sm font-medium text-white hover:text-[#eb9447] transition-colors">
                         {camp.name}
                       </a>
                       <span className="text-xs text-zinc-500">{camp.status}</span>
@@ -387,7 +387,7 @@ export default function ContactProfile({ contact }: { contact: Contact }) {
           {/* Company */}
           <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl p-5">
             <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-3">Company</h2>
-            <a href={`/companies/${contact.company.id}`} className="flex items-center gap-2 text-white hover:text-blue-400 transition-colors">
+            <a href={`/companies/${contact.company.id}`} className="flex items-center gap-2 text-white hover:text-[#eb9447] transition-colors">
               <Building2 className="w-4 h-4 text-zinc-500 flex-shrink-0" />
               <span className="font-medium">{contact.company.name}</span>
             </a>
@@ -396,7 +396,7 @@ export default function ContactProfile({ contact }: { contact: Contact }) {
             )}
             {contact.company.website && (
               <a href={contact.company.website} target="_blank" rel="noopener noreferrer"
-                className="text-xs text-blue-400 hover:text-blue-300 mt-1 ml-6 flex items-center gap-1 transition-colors">
+                className="text-xs text-[#eb9447] hover:text-[#f0a86a] mt-1 ml-6 flex items-center gap-1 transition-colors">
                 {contact.company.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
                 <ExternalLink className="w-3 h-3" />
               </a>
@@ -412,7 +412,7 @@ export default function ContactProfile({ contact }: { contact: Contact }) {
               <div className="space-y-1.5">
                 {contact.listMemberships.map((m) => (
                   <a key={m.list.id} href={`/lists/${m.list.id}`}
-                    className="flex items-center gap-2 text-sm text-white hover:text-blue-400 transition-colors">
+                    className="flex items-center gap-2 text-sm text-white hover:text-[#eb9447] transition-colors">
                     <ListChecks className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
                     {m.list.name}
                   </a>

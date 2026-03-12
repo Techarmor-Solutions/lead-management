@@ -142,7 +142,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                       </div>
                       <div className="flex gap-1.5 text-xs">
                         {replied && <span className="bg-green-900/30 text-green-400 px-1.5 py-0.5 rounded">Replied</span>}
-                        {opened && !replied && <span className="bg-blue-900/30 text-blue-400 px-1.5 py-0.5 rounded">Opened</span>}
+                        {opened && !replied && <span className="bg-[#eb9447]/15 text-[#eb9447] px-1.5 py-0.5 rounded">Opened</span>}
                       </div>
                     </div>
                   );
@@ -159,7 +159,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
 function StepTypeIcon({ type }: { type: string }) {
   const cls = "w-3.5 h-3.5";
   switch (type) {
-    case "EMAIL": return <Mail className={`${cls} text-blue-400`} />;
+    case "EMAIL": return <Mail className={`${cls} text-[#eb9447]`} />;
     case "LINKEDIN_CONNECT": return <Linkedin className={`${cls} text-sky-400`} />;
     case "LINKEDIN_MESSAGE": return <MessageSquare className={`${cls} text-sky-400`} />;
     case "CALL": return <Phone className={`${cls} text-green-400`} />;
@@ -177,7 +177,7 @@ const STEP_TYPE_LABELS: Record<string, string> = {
 };
 
 const STEP_TYPE_COLORS: Record<string, string> = {
-  EMAIL: "bg-blue-900/30 text-blue-400",
+  EMAIL: "bg-[#eb9447]/15 text-[#eb9447]",
   LINKEDIN_CONNECT: "bg-sky-900/30 text-sky-400",
   LINKEDIN_MESSAGE: "bg-sky-900/30 text-sky-400",
   CALL: "bg-green-900/30 text-green-400",
@@ -196,7 +196,7 @@ function StepTypeBadge({ type }: { type: StepType }) {
 function CampaignStatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     DRAFT: "bg-zinc-800 text-zinc-400",
-    READY: "bg-blue-900/40 text-blue-400",
+    READY: "bg-[#eb9447]/15 text-[#eb9447]",
     APPROVED: "bg-green-900/40 text-green-400",
     SENDING: "bg-amber-900/40 text-amber-400",
     ACTIVE: "bg-green-900/40 text-green-400",

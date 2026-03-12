@@ -59,7 +59,7 @@ const STEP_TYPES: { type: StepType; label: string; icon: React.ReactNode; color:
 ];
 
 const TYPE_COLORS: Record<StepType, string> = {
-  EMAIL: "bg-blue-600/20 text-blue-400 border-blue-600/30",
+  EMAIL: "bg-[#eb9447]/15 text-[#eb9447] border-[#eb9447]/30",
   LINKEDIN_CONNECT: "bg-sky-600/20 text-sky-400 border-sky-600/30",
   LINKEDIN_MESSAGE: "bg-sky-600/20 text-sky-400 border-sky-600/30",
   CALL: "bg-green-600/20 text-green-400 border-green-600/30",
@@ -256,7 +256,7 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
         <button
           onClick={() => setMode("campaign")}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            mode === "campaign" ? "bg-blue-600 text-white" : "bg-zinc-800 text-zinc-400 hover:text-white"
+            mode === "campaign" ? "bg-[#eb9447] text-white" : "bg-zinc-800 text-zinc-400 hover:text-white"
           }`}
         >
           Campaign
@@ -345,7 +345,7 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
                       checked={selectedContactIds.has(c.id)}
                       onChange={() => !disabled && toggleContact(c.id)}
                       disabled={disabled}
-                      className="w-4 h-4 rounded accent-blue-500 disabled:cursor-not-allowed"
+                      className="w-4 h-4 rounded accent-[#eb9447] disabled:cursor-not-allowed"
                     />
                     <div className="min-w-0 flex-1">
                       <div className="text-sm text-white truncate flex items-center gap-2">
@@ -541,7 +541,7 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
             <button
               onClick={() => handleSave("READY")}
               disabled={saving}
-              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              className="bg-[#eb9447] hover:bg-[#d4833a] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
             >
               {saving ? "Saving..." : "Mark as Ready for Review"}
             </button>

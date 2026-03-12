@@ -102,7 +102,7 @@ export default function CampaignActions({ campaign }: Props) {
           {confirm === "send" ? (
             <div className="flex items-center gap-2">
               <span className="text-sm text-zinc-400">Launch sending?</span>
-              <button onClick={launchCampaign} disabled={loading} className="text-sm bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+              <button onClick={launchCampaign} disabled={loading} className="text-sm bg-[#eb9447] hover:bg-[#d4833a] text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
                 {loading ? "Launching..." : "Launch"}
               </button>
               <button onClick={() => setConfirm(null)} className="text-sm text-zinc-400 hover:text-white px-2 py-1.5 rounded-lg transition-colors">
@@ -112,7 +112,7 @@ export default function CampaignActions({ campaign }: Props) {
           ) : (
             <button
               onClick={() => setConfirm("send")}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center gap-2 bg-[#eb9447] hover:bg-[#d4833a] text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
             >
               <Send className="w-4 h-4" />
               Launch Campaign

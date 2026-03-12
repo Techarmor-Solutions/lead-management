@@ -138,7 +138,7 @@ export default function CompanyList({
         </button>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="flex items-center gap-1.5 bg-[#eb9447] hover:bg-[#d4833a] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add Company
@@ -150,7 +150,7 @@ export default function CompanyList({
           <div className="py-16 text-center text-zinc-500">
             <Building2 className="w-8 h-8 mx-auto mb-3 opacity-30" />
             <p>No companies found</p>
-            <Link href="/leads" className="text-sm text-blue-400 hover:text-blue-300 mt-2 inline-block">
+            <Link href="/leads" className="text-sm text-[#eb9447] hover:text-[#f0a86a] mt-2 inline-block">
               Discover leads →
             </Link>
           </div>
@@ -336,7 +336,7 @@ export default function CompanyList({
                 <button
                   type="submit"
                   disabled={saving || !form.name.trim()}
-                  className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                  className="bg-[#eb9447] hover:bg-[#d4833a] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                 >
                   {saving ? "Saving..." : "Add Company"}
                 </button>

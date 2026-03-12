@@ -119,7 +119,7 @@ export default function CsvImportModal({ type, onClose }: Props) {
                 </button>
                 <button
                   onClick={onClose}
-                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                  className="flex-1 bg-[#eb9447] hover:bg-[#d4833a] text-white px-4 py-2 rounded-lg text-sm transition-colors"
                 >
                   Done
                 </button>
@@ -134,7 +134,7 @@ export default function CsvImportModal({ type, onClose }: Props) {
                     <p className="text-sm font-medium text-white mb-1">Expected columns</p>
                     <div className="flex flex-wrap gap-1 mb-2">
                       {tmpl.columns.map((col) => (
-                        <span key={col} className={`text-xs px-1.5 py-0.5 rounded ${col.endsWith("*") ? "bg-blue-600/20 text-blue-400" : "bg-zinc-800 text-zinc-400"}`}>
+                        <span key={col} className={`text-xs px-1.5 py-0.5 rounded ${col.endsWith("*") ? "bg-[#eb9447]/15 text-[#eb9447]" : "bg-zinc-800 text-zinc-400"}`}>
                           {col}
                         </span>
                       ))}
@@ -143,7 +143,7 @@ export default function CsvImportModal({ type, onClose }: Props) {
                   </div>
                   <button
                     onClick={downloadTemplate}
-                    className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors flex-shrink-0"
+                    className="flex items-center gap-1.5 text-xs text-[#eb9447] hover:text-[#f0a86a] transition-colors flex-shrink-0"
                   >
                     <Download className="w-3.5 h-3.5" />
                     Template
@@ -197,7 +197,7 @@ export default function CsvImportModal({ type, onClose }: Props) {
                 <button
                   onClick={handleImport}
                   disabled={!file || importing}
-                  className="flex-1 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                  className="flex-1 bg-[#eb9447] hover:bg-[#d4833a] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                 >
                   {importing ? "Importing..." : "Import"}
                 </button>

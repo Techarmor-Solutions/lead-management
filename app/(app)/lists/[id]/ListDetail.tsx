@@ -102,7 +102,7 @@ export default function ListDetail({ list, allContacts }: { list: List; allConta
         </div>
         <button
           onClick={() => setShowPicker(true)}
-          className="flex items-center gap-2 text-sm bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-colors"
+          className="flex items-center gap-2 text-sm bg-[#eb9447] hover:bg-[#d4833a] text-white px-4 py-2 rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add Contacts
@@ -141,7 +141,7 @@ export default function ListDetail({ list, allContacts }: { list: List; allConta
                     type="checkbox"
                     checked={selectedIds.has(c.id)}
                     onChange={() => toggleSelect(c.id)}
-                    className="w-4 h-4 rounded accent-blue-500"
+                    className="w-4 h-4 rounded accent-[#eb9447]"
                   />
                   <div className="min-w-0 flex-1">
                     <div className="text-sm text-white truncate">
@@ -165,7 +165,7 @@ export default function ListDetail({ list, allContacts }: { list: List; allConta
                 <button
                   onClick={addContacts}
                   disabled={saving || !selectedIds.size}
-                  className="text-sm bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                  className="text-sm bg-[#eb9447] hover:bg-[#d4833a] text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
                 >
                   {saving ? "Adding..." : `Add ${selectedIds.size || ""} Contact${selectedIds.size !== 1 ? "s" : ""}`}
                 </button>

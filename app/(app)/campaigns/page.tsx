@@ -28,7 +28,7 @@ export default async function CampaignsPage() {
         </div>
         <Link
           href="/campaigns/new"
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="flex items-center gap-2 bg-[#eb9447] hover:bg-[#d4833a] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
         >
           <Plus className="w-4 h-4" />
           New Campaign
@@ -75,7 +75,7 @@ export default async function CampaignsPage() {
           <div className="py-16 text-center text-zinc-500">
             <Mail className="w-8 h-8 mx-auto mb-3 opacity-30" />
             <p>No campaigns yet</p>
-            <Link href="/campaigns/new" className="text-sm text-blue-400 hover:text-blue-300 mt-2 inline-block">
+            <Link href="/campaigns/new" className="text-sm text-[#eb9447] hover:text-[#f0a86a] mt-2 inline-block">
               Create your first campaign →
             </Link>
           </div>
@@ -100,7 +100,7 @@ export default async function CampaignsPage() {
                 return (
                   <tr key={c.id} className="hover:bg-zinc-800/20 transition-colors">
                     <td className="px-5 py-3">
-                      <Link href={`/campaigns/${c.id}`} className="font-medium text-white hover:text-blue-400 transition-colors">
+                      <Link href={`/campaigns/${c.id}`} className="font-medium text-white hover:text-[#eb9447] transition-colors">
                         {c.name}
                       </Link>
                       <div className="text-xs text-zinc-500">{formatDate(c.createdAt)}</div>
@@ -126,7 +126,7 @@ export default async function CampaignsPage() {
 function CampaignStatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     DRAFT: "bg-zinc-800 text-zinc-400",
-    READY: "bg-blue-900/40 text-blue-400",
+    READY: "bg-[#eb9447]/15 text-[#eb9447]",
     APPROVED: "bg-green-900/40 text-green-400",
     SENDING: "bg-amber-900/40 text-amber-400",
     ACTIVE: "bg-green-900/40 text-green-400",

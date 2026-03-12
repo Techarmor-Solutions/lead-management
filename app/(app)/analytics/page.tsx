@@ -31,7 +31,7 @@ export default async function AnalyticsPage() {
       {/* Overall metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          { label: "Total Sent", value: totalSent, icon: Mail, color: "text-blue-400" },
+          { label: "Total Sent", value: totalSent, icon: Mail, color: "text-[#eb9447]" },
           { label: "Open Rate", value: pct(totalOpened, totalSent), icon: BarChart3, color: "text-green-400" },
           { label: "Click Rate", value: pct(totalClicked, totalSent), icon: MousePointer, color: "text-purple-400" },
           { label: "Reply Rate", value: pct(totalReplied, totalSent), icon: MessageSquare, color: "text-amber-400" },
@@ -75,7 +75,7 @@ export default async function AnalyticsPage() {
                 return (
                   <tr key={c.id} className="hover:bg-zinc-800/20 transition-colors">
                     <td className="px-5 py-3">
-                      <Link href={`/campaigns/${c.id}`} className="font-medium text-white hover:text-blue-400">
+                      <Link href={`/campaigns/${c.id}`} className="font-medium text-white hover:text-[#eb9447]">
                         {c.name}
                       </Link>
                       {c.industry && <div className="text-xs text-zinc-500">{c.industry}</div>}

@@ -44,7 +44,7 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-[#0f0f0f] border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
+              className="w-full bg-[#0f0f0f] border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#eb9447] transition-colors"
               placeholder="Enter password"
               autoFocus
               required
@@ -60,7 +60,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg py-2 font-medium transition-colors"
+            className="w-full bg-[#eb9447] hover:bg-[#d4833a] disabled:opacity-50 text-white rounded-lg py-2 font-medium transition-colors"
           >
             {loading ? "Signing in..." : "Sign in"}
           </button>

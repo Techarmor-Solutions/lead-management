@@ -28,7 +28,7 @@ export default function ContactCard({ contact }: Props) {
 
       <div className="mt-3 flex flex-wrap gap-3 text-xs text-zinc-500">
         {contact.email && (
-          <a href={`mailto:${contact.email}`} className="flex items-center gap-1 hover:text-blue-400 transition-colors">
+          <a href={`mailto:${contact.email}`} className="flex items-center gap-1 hover:text-[#eb9447] transition-colors">
             <Mail className="w-3.5 h-3.5" />
             {contact.email}
           </a>
@@ -40,7 +40,7 @@ export default function ContactCard({ contact }: Props) {
           </span>
         )}
         {contact.linkedin && (
-          <a href={contact.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-blue-400 transition-colors">
+          <a href={contact.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-[#eb9447] transition-colors">
             <Linkedin className="w-3.5 h-3.5" />
             LinkedIn
           </a>
