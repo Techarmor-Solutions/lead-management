@@ -10,6 +10,10 @@ export const TRACKING_PIXEL = Buffer.from(
   "base64"
 );
 
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export function injectTracking(
   htmlBody: string,
   openToken: string,
@@ -18,10 +22,15 @@ export function injectTracking(
 ): string {
   let result = htmlBody;
 
-  // Wrap links
   for (const [originalUrl, token] of clickTokenMap) {
     const trackUrl = `${appUrl}/api/track/click/${token}?url=${encodeURIComponent(originalUrl)}`;
-    result = result.replaceAll(originalUrl, trackUrl);
+    // Replace existing href="originalUrl" anchors
+    result = result.replaceAll(`href="${originalUrl}"`, `href="${trackUrl}"`);
+    // Replace any remaining raw URL text (not inside an href) with a tracked anchor
+    result = result.replace(
+      new RegExp(`(?<!href=["'])${escapeRegex(originalUrl)}`, "g"),
+      `<a href="${trackUrl}">${originalUrl}</a>`
+    );
   }
 
   // Append open pixel
@@ -31,12 +40,14 @@ export function injectTracking(
   return result;
 }
 
-export function extractLinks(htmlBody: string): string[] {
-  const linkRegex = /href="(https?:\/\/[^"]+)"/g;
+export function extractLinks(body: string): string[] {
   const links: string[] = [];
+  // Match href="..." in HTML
+  const hrefRegex = /href="(https?:\/\/[^"]+)"/g;
+  // Match raw URLs in plain text
+  const rawRegex = /(?<![="'])(https?:\/\/[^\s<>"']+)/g;
   let match;
-  while ((match = linkRegex.exec(htmlBody)) !== null) {
-    links.push(match[1]);
-  }
+  while ((match = hrefRegex.exec(body)) !== null) links.push(match[1]);
+  while ((match = rawRegex.exec(body)) !== null) links.push(match[1]);
   return [...new Set(links)];
 }

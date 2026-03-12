@@ -103,7 +103,7 @@ export async function pollForReplies(contactEmails: string[]): Promise<string[]>
 
   const res = await gmail.users.messages.list({
     userId: "me",
-    q: `(${emailQuery}) in:inbox`,
+    q: `(${emailQuery}) newer_than:30d`,
     maxResults: 50,
   });
 
