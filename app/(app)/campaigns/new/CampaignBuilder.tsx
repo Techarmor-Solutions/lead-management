@@ -40,6 +40,8 @@ interface Props {
   lists: ContactList[];
   initialSteps?: TemplateStep[];
   initialIndustry?: string;
+  initialName?: string;
+  editId?: string;
 }
 
 const DEFAULT_STEPS: Step[] = [
@@ -74,10 +76,10 @@ function toSteps(raw: TemplateStep[]): Step[] {
   }));
 }
 
-export default function CampaignBuilder({ contacts, agencyProfile, lists, initialSteps, initialIndustry }: Props) {
+export default function CampaignBuilder({ contacts, agencyProfile, lists, initialSteps, initialIndustry, initialName, editId }: Props) {
   const router = useRouter();
-  const [mode, setMode] = useState<"campaign" | "template">("campaign");
-  const [name, setName] = useState("");
+  const [mode, setMode] = useState<"campaign" | "template">(editId ? "template" : "campaign");
+  const [name, setName] = useState(initialName || "");
   const [industry, setIndustry] = useState(initialIndustry || "");
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [contactSearch, setContactSearch] = useState("");
@@ -236,13 +238,22 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
     }
 
     setSaving(true);
-    const res = await fetch("/api/campaigns", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, industry, status: "DRAFT", isTemplate: true, contactIds: [], steps }),
-    });
-    const data = await res.json();
-    router.push(`/campaigns/${data.id}`);
+    if (editId) {
+      await fetch(`/api/campaigns/${editId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, industry, steps }),
+      });
+      router.push(`/campaigns/${editId}`);
+    } else {
+      const res = await fetch("/api/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, industry, status: "DRAFT", isTemplate: true, contactIds: [], steps }),
+      });
+      const data = await res.json();
+      router.push(`/campaigns/${data.id}`);
+    }
   }
 
   const step = steps[activeStep];
@@ -565,7 +576,7 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
             className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
           >
             <Copy className="w-4 h-4" />
-            {saving ? "Saving..." : "Save Template"}
+            {saving ? "Saving..." : editId ? "Save Changes" : "Save Template"}
           </button>
         )}
       </div>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle, Send, Pause, Play, Trash2, Plus } from "lucide-react";
+import { CheckCircle, Send, Pause, Play, Trash2, Plus, Pencil } from "lucide-react";
 import Link from "next/link";
 
 interface Props {
@@ -40,10 +40,17 @@ export default function CampaignActions({ campaign }: Props) {
     router.push("/campaigns");
   }
 
-  // Template view: just a "Use Template" link + delete
+  // Template view: "Edit", "Use Template" + delete
   if (campaign.isTemplate) {
     return (
       <div className="flex items-center gap-2">
+        <Link
+          href={`/campaigns/${campaign.id}/edit`}
+          className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+        >
+          <Pencil className="w-4 h-4" />
+          Edit
+        </Link>
         <Link
           href={`/campaigns/new?template=${campaign.id}`}
           className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
