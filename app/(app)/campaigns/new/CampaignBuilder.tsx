@@ -44,8 +44,6 @@ interface Props {
 
 const DEFAULT_STEPS: Step[] = [
   { label: "Initial Outreach", stepType: "EMAIL", delayDays: 0, subject: "", body: "" },
-  { label: "Follow-up #1", stepType: "EMAIL", delayDays: 3, subject: "", body: "" },
-  { label: "Final Follow-up", stepType: "EMAIL", delayDays: 7, subject: "", body: "" },
 ];
 
 const TAGS = ["{{first_name}}", "{{company_name}}", "{{sender_name}}"];
@@ -390,19 +388,33 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
             {steps.map((s, i) => {
               const typeInfo = STEP_TYPES.find((t) => t.type === s.stepType);
               return (
-                <button
-                  key={i}
-                  onClick={() => setActiveStep(i)}
-                  className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg transition-colors border ${
-                    activeStep === i
-                      ? TYPE_COLORS[s.stepType]
-                      : "bg-zinc-800 text-zinc-400 hover:text-white border-transparent"
-                  }`}
-                >
-                  {activeStep === i ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                  {typeInfo?.icon}
-                  Step {i + 1}
-                </button>
+                <div key={i} className="flex items-center">
+                  <button
+                    onClick={() => setActiveStep(i)}
+                    className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-l-lg transition-colors border-y border-l ${
+                      activeStep === i
+                        ? TYPE_COLORS[s.stepType]
+                        : "bg-zinc-800 text-zinc-400 hover:text-white border-transparent"
+                    }`}
+                  >
+                    {activeStep === i ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    {typeInfo?.icon}
+                    Step {i + 1}
+                  </button>
+                  {steps.length > 1 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); removeStep(i); }}
+                      className={`flex items-center text-xs px-1.5 py-1 rounded-r-lg transition-colors border-y border-r ${
+                        activeStep === i
+                          ? TYPE_COLORS[s.stepType] + " opacity-70 hover:opacity-100"
+                          : "bg-zinc-800 text-zinc-500 hover:text-red-400 border-transparent"
+                      }`}
+                      title="Delete step"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -513,7 +525,7 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
                 </div>
               )}
 
-              {activeStep > 0 && (
+              {steps.length > 1 && (
                 <button
                   onClick={() => removeStep(activeStep)}
                   className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 transition-colors"
