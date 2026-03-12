@@ -46,6 +46,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // Delete related records in dependency order (Send has no cascade on campaign)
+  const sends = await prisma.send.findMany({ where: { campaignId: id }, select: { id: true } });
+  const sendIds = sends.map((s) => s.id);
+  if (sendIds.length > 0) {
+    await prisma.trackingToken.deleteMany({ where: { sendId: { in: sendIds } } });
+    await prisma.send.deleteMany({ where: { campaignId: id } });
+  }
+  await prisma.campaignStep.deleteMany({ where: { campaignId: id } });
   await prisma.campaign.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }
