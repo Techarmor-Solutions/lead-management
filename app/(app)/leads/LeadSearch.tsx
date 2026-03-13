@@ -76,7 +76,7 @@ export default function LeadSearch() {
     await fetch("/api/companies", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(place),
+      body: JSON.stringify({ ...place, industry: query }),
     });
     setSaving((prev) => { const n = new Set(prev); n.delete(place.placeId); return n; });
     setSaved((prev) => new Set(prev).add(place.placeId));
