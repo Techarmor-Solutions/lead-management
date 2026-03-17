@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Mail, Linkedin, ChevronLeft, ChevronRight, Users, Upload } from "lucide-react";
+import { Mail, Linkedin, ChevronLeft, ChevronRight, Users, Upload, Trash2 } from "lucide-react";
 import CsvImportModal from "@/components/CsvImportModal";
 import StatusBadge from "@/components/StatusBadge";
 import { ContactStatus } from "@prisma/client";
@@ -44,7 +44,16 @@ export default function ContactsTable({ contacts, total, page, limit, search: in
   const router = useRouter();
   const [search, setSearch] = useState(initialSearch);
   const [showImport, setShowImport] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const totalPages = Math.ceil(total / limit);
+
+  async function handleDelete(contactId: string) {
+    if (!confirm("Delete this contact?")) return;
+    setDeleting(contactId);
+    await fetch(`/api/contacts/${contactId}`, { method: "DELETE" });
+    setDeleting(null);
+    router.refresh();
+  }
 
   function navigate(newSearch?: string, newStatus?: string, newPage?: number) {
     const params = new URLSearchParams();
@@ -116,6 +125,7 @@ export default function ContactsTable({ contacts, total, page, limit, search: in
                   <th className="text-left px-5 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Company</th>
                   <th className="text-left px-5 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider hidden md:table-cell">Email</th>
                   <th className="text-left px-5 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Status</th>
+                  <th className="px-5 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
@@ -157,6 +167,15 @@ export default function ContactsTable({ contacts, total, page, limit, search: in
                           <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                         ))}
                       </select>
+                    </td>
+                    <td className="px-3 py-3">
+                      <button
+                        onClick={() => handleDelete(c.id)}
+                        disabled={deleting === c.id}
+                        className="p-1.5 text-zinc-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </td>
                   </tr>
                 ))}

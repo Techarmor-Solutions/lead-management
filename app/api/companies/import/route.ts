@@ -28,15 +28,15 @@ export async function POST(req: NextRequest) {
       await prisma.company.create({
         data: {
           name,
-          address:       row["address"]        || "",
-          city:          row["city"]            || "",
-          state:         row["state"]           || "",
-          zip:           row["zip"] || row["postal code"] || "",
-          phone:         row["phone"]           || "",
+          address:       row["address"]        || row["company street"]  || row["company address"] || "",
+          city:          row["city"]            || row["company city"]    || "",
+          state:         row["state"]           || row["company state"]   || "",
+          zip:           row["zip"]             || row["postal code"]     || row["company postal code"] || "",
+          phone:         row["phone"]           || row["company phone"]   || "",
           website:       row["website"]         || "",
           industry:      row["industry"]        || "",
-          employeeCount: row["employee count"] || row["employees"] || "",
-          notes:         row["notes"]           || "",
+          employeeCount: row["employee count"]  || row["employees"]       || row["# employees"] || "",
+          notes:         row["notes"]           || row["short description"] || "",
           source:        "csv_import",
         },
       });

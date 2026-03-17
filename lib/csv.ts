@@ -1,14 +1,14 @@
-/** Minimal RFC-4180-ish CSV parser — handles quoted fields and commas inside quotes */
+/** RFC-4180 CSV parser — handles quoted fields, embedded newlines, and escaped quotes */
 export function parseCsv(text: string): Record<string, string>[] {
-  const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter((l) => l.trim());
-  if (lines.length < 2) return [];
+  const normalized = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const rows = splitRows(normalized);
+  if (rows.length < 2) return [];
 
-  const headers = parseRow(lines[0]).map((h) => h.trim().toLowerCase());
+  const headers = rows[0].map((h) => h.trim().toLowerCase());
 
-  return lines
+  return rows
     .slice(1)
-    .map((line) => {
-      const values = parseRow(line);
+    .map((values) => {
       const row: Record<string, string> = {};
       headers.forEach((h, i) => {
         row[h] = (values[i] ?? "").trim();
@@ -18,37 +18,53 @@ export function parseCsv(text: string): Record<string, string>[] {
     .filter((row) => Object.values(row).some((v) => v));
 }
 
-function parseRow(line: string): string[] {
-  const fields: string[] = [];
+function splitRows(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
   let i = 0;
-  while (i < line.length) {
-    if (line[i] === '"') {
-      let field = "";
-      i++; // skip opening quote
-      while (i < line.length) {
-        if (line[i] === '"' && line[i + 1] === '"') {
+
+  while (i < text.length) {
+    const ch = text[i];
+
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
           field += '"';
           i += 2;
-        } else if (line[i] === '"') {
-          i++; // skip closing quote
-          break;
         } else {
-          field += line[i++];
+          inQuotes = false;
+          i++;
         }
+      } else {
+        field += ch;
+        i++;
       }
-      fields.push(field);
-      if (line[i] === ",") i++;
     } else {
-      const end = line.indexOf(",", i);
-      if (end === -1) {
-        fields.push(line.slice(i));
-        break;
+      if (ch === '"') {
+        inQuotes = true;
+        i++;
+      } else if (ch === ',') {
+        row.push(field);
+        field = "";
+        i++;
+      } else if (ch === '\n') {
+        row.push(field);
+        field = "";
+        if (row.some((f) => f.trim())) rows.push(row);
+        row = [];
+        i++;
+      } else {
+        field += ch;
+        i++;
       }
-      fields.push(line.slice(i, end));
-      i = end + 1;
     }
   }
-  // trailing comma
-  if (line.endsWith(",")) fields.push("");
-  return fields;
+
+  // Flush last field/row
+  row.push(field);
+  if (row.some((f) => f.trim())) rows.push(row);
+
+  return rows;
 }

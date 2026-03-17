@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Building2, Users, Globe, MapPin, Star, ChevronLeft, ChevronRight, Plus, X, Upload } from "lucide-react";
+import { Building2, Users, Globe, MapPin, Star, ChevronLeft, ChevronRight, Plus, X, Upload, Trash2 } from "lucide-react";
 import CsvImportModal from "@/components/CsvImportModal";
 
 interface Company {
@@ -55,7 +55,18 @@ export default function CompanyList({
   const [showImport, setShowImport] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const totalPages = Math.ceil(total / limit);
+
+  async function handleDelete(e: React.MouseEvent, companyId: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm("Delete this company and all its contacts?")) return;
+    setDeleting(companyId);
+    await fetch(`/api/companies/${companyId}`, { method: "DELETE" });
+    setDeleting(null);
+    router.refresh();
+  }
 
   function navigate(newSearch: string, newIndustry: string, newPage = 1) {
     const params = new URLSearchParams();
@@ -198,9 +209,18 @@ export default function CompanyList({
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 text-xs text-zinc-500 ml-4">
-                    <Users className="w-3.5 h-3.5" />
-                    {c._count.contacts}
+                  <div className="flex items-center gap-3 ml-4">
+                    <div className="flex items-center gap-1 text-xs text-zinc-500">
+                      <Users className="w-3.5 h-3.5" />
+                      {c._count.contacts}
+                    </div>
+                    <button
+                      onClick={(e) => handleDelete(e, c.id)}
+                      disabled={deleting === c.id}
+                      className="p-1.5 text-zinc-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </Link>
               ))}
