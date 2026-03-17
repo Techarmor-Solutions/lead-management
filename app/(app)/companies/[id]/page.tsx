@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { formatDate } from "@/lib/utils";
 import CompanyEnrichButton from "./CompanyEnrichButton";
+import CategoryEditor from "./CategoryEditor";
 import ContactCard from "./ContactCard";
 import AddContactButton from "./AddContactButton";
 import Link from "next/link";
@@ -28,7 +29,10 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
 
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">{company.name}</h1>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-2xl font-bold text-white">{company.name}</h1>
+            <CategoryEditor companyId={id} industry={company.industry || ""} />
+          </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-zinc-500">
             {(company.city || company.state) && (
               <span className="flex items-center gap-1">

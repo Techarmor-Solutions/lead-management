@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Building2, Users, Globe, MapPin, Star, ChevronLeft, ChevronRight, Plus, X, Upload, Trash2 } from "lucide-react";
+import { Building2, Users, Globe, MapPin, Star, ChevronLeft, ChevronRight, Plus, X, Upload, Trash2, Pencil, Check } from "lucide-react";
 import CsvImportModal from "@/components/CsvImportModal";
 
 interface Company {
@@ -56,7 +56,21 @@ export default function CompanyList({
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [categoryDraft, setCategoryDraft] = useState("");
   const totalPages = Math.ceil(total / limit);
+
+  async function saveCategory(e: React.MouseEvent | React.KeyboardEvent, companyId: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    await fetch(`/api/companies/${companyId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ industry: categoryDraft.trim() }),
+    });
+    setEditingCategory(null);
+    router.refresh();
+  }
 
   async function handleDelete(e: React.MouseEvent, companyId: string) {
     e.preventDefault();
@@ -177,10 +191,31 @@ export default function CompanyList({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-white">{c.name}</span>
-                      {c.industry && (
-                        <span className="text-xs bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">
-                          {c.industry}
+                      {editingCategory === c.id ? (
+                        <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="flex items-center gap-1">
+                          <input
+                            autoFocus
+                            value={categoryDraft}
+                            onChange={(e) => setCategoryDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") saveCategory(e, c.id);
+                              if (e.key === "Escape") { e.stopPropagation(); setEditingCategory(null); }
+                            }}
+                            className="text-xs bg-zinc-700 border border-zinc-500 text-white rounded px-1.5 py-0.5 w-32 outline-none focus:border-[#eb9447]"
+                            placeholder="category"
+                          />
+                          <button onClick={(e) => saveCategory(e, c.id)} className="p-0.5 text-green-400 hover:bg-green-400/10 rounded">
+                            <Check className="w-3 h-3" />
+                          </button>
                         </span>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditingCategory(c.id); setCategoryDraft(c.industry || ""); }}
+                          className="flex items-center gap-1 group text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white px-1.5 py-0.5 rounded transition-colors"
+                        >
+                          {c.industry || <span className="italic">no category</span>}
+                          <Pencil className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
                       )}
                       {c.enrichedAt && (
                         <span className="text-xs bg-green-900/30 text-green-400 px-1.5 py-0.5 rounded">
