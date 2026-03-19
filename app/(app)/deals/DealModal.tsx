@@ -33,7 +33,7 @@ export default function DealModal({ deal, columns, defaultColumnId, onClose, onS
   const [contactSearch, setContactSearch] = useState("");
   const [contactOptions, setContactOptions] = useState<ContactOption[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (!contactSearch.trim()) {
