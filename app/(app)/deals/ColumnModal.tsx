@@ -4,30 +4,38 @@ import { useState } from "react";
 import { X } from "lucide-react";
 
 const PRESET_COLORS = [
-  "#3b82f6", // blue
-  "#f59e0b", // amber
-  "#10b981", // emerald
-  "#ef4444", // red
-  "#8b5cf6", // violet
-  "#ec4899", // pink
+  "#3b82f6",
+  "#f59e0b",
+  "#10b981",
+  "#ef4444",
+  "#8b5cf6",
+  "#ec4899",
 ];
 
 interface Props {
   initialName?: string;
   initialColor?: string;
+  initialIsClosedStage?: boolean;
   onClose: () => void;
-  onSave: (name: string, color: string) => Promise<void>;
+  onSave: (name: string, color: string, isClosedStage: boolean) => Promise<void>;
 }
 
-export default function ColumnModal({ initialName = "", initialColor = "#3b82f6", onClose, onSave }: Props) {
+export default function ColumnModal({
+  initialName = "",
+  initialColor = "#3b82f6",
+  initialIsClosedStage = false,
+  onClose,
+  onSave,
+}: Props) {
   const [name, setName] = useState(initialName);
   const [color, setColor] = useState(initialColor);
+  const [isClosedStage, setIsClosedStage] = useState(initialIsClosedStage);
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
     if (!name.trim()) return;
     setSaving(true);
-    await onSave(name.trim(), color);
+    await onSave(name.trim(), color, isClosedStage);
     setSaving(false);
   }
 
@@ -36,7 +44,7 @@ export default function ColumnModal({ initialName = "", initialColor = "#3b82f6"
       <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-sm p-6 space-y-5">
         <div className="flex items-center justify-between">
           <h2 className="text-white font-semibold text-lg">
-            {initialName ? "Edit Column" : "New Column"}
+            {initialName ? "Edit Stage" : "New Stage"}
           </h2>
           <button onClick={onClose} className="text-zinc-400 hover:text-white">
             <X className="w-5 h-5" />
@@ -44,7 +52,7 @@ export default function ColumnModal({ initialName = "", initialColor = "#3b82f6"
         </div>
 
         <div>
-          <label className="text-zinc-400 text-sm block mb-1">Column Name</label>
+          <label className="text-zinc-400 text-sm block mb-1">Stage Name</label>
           <input
             className="input w-full"
             placeholder="e.g. Prospect"
@@ -72,6 +80,25 @@ export default function ColumnModal({ initialName = "", initialColor = "#3b82f6"
             ))}
           </div>
         </div>
+
+        <label className="flex items-center gap-3 cursor-pointer select-none">
+          <div
+            onClick={() => setIsClosedStage((v) => !v)}
+            className={`relative w-10 h-5 rounded-full transition-colors ${
+              isClosedStage ? "bg-[#eb9447]" : "bg-zinc-700"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                isClosedStage ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </div>
+          <div>
+            <p className="text-white text-sm">Closed Stage</p>
+            <p className="text-zinc-500 text-xs">Hides the time-in-stage timer on deals</p>
+          </div>
+        </label>
 
         <div className="flex justify-end gap-3 pt-2">
           <button

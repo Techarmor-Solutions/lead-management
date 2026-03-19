@@ -1,15 +1,35 @@
 "use client";
 
 import { Draggable } from "@hello-pangea/dnd";
+import { Clock, Calendar } from "lucide-react";
 import { Deal } from "./types";
 
 interface Props {
   deal: Deal;
   index: number;
+  isClosedStage: boolean;
   onClick: () => void;
 }
 
-export default function DealCard({ deal, index, onClick }: Props) {
+function formatDuration(ms: number): string {
+  const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+  if (days === 0) return "< 1 day";
+  if (days === 1) return "1 day";
+  return `${days} days`;
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+export default function DealCard({ deal, index, isClosedStage, onClick }: Props) {
+  const currentEntry = deal.stageHistory.find((h) => !h.exitedAt);
+  const timeInStage = currentEntry && !isClosedStage
+    ? formatDuration(Date.now() - new Date(currentEntry.enteredAt).getTime())
+    : null;
+
+  const isOverdue = deal.closeDate && new Date(deal.closeDate) < new Date() && !isClosedStage;
+
   return (
     <Draggable draggableId={deal.id} index={index}>
       {(provided, snapshot) => (
@@ -31,6 +51,21 @@ export default function DealCard({ deal, index, onClick }: Props) {
               ${deal.value.toLocaleString()}
             </p>
           )}
+
+          <div className="flex items-center gap-3 mt-2 flex-wrap">
+            {timeInStage && (
+              <span className="flex items-center gap-1 text-zinc-400 text-[11px]">
+                <Clock className="w-3 h-3" />
+                {timeInStage}
+              </span>
+            )}
+            {deal.closeDate && (
+              <span className={`flex items-center gap-1 text-[11px] ${isOverdue ? "text-red-400" : "text-zinc-400"}`}>
+                <Calendar className="w-3 h-3" />
+                {formatDate(deal.closeDate)}
+              </span>
+            )}
+          </div>
 
           {deal.contacts.length > 0 && (
             <div className="flex items-center gap-1 mt-2 flex-wrap">

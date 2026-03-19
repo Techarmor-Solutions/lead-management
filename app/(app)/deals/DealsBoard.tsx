@@ -104,17 +104,17 @@ export default function DealsBoard({ initialColumns }: Props) {
   );
 
   // ─── Column CRUD ──────────────────────────────────────────────
-  async function saveColumn(name: string, color: string) {
+  async function saveColumn(name: string, color: string, isClosedStage: boolean) {
     if (columnModal.column) {
       // Edit
       const res = await fetch(`/api/deals/columns/${columnModal.column.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, color }),
+        body: JSON.stringify({ name, color, isClosedStage }),
       });
       if (res.ok) {
         setColumns((cols) =>
-          cols.map((c) => (c.id === columnModal.column!.id ? { ...c, name, color } : c))
+          cols.map((c) => (c.id === columnModal.column!.id ? { ...c, name, color, isClosedStage } : c))
         );
       }
     } else {
@@ -122,7 +122,7 @@ export default function DealsBoard({ initialColumns }: Props) {
       const res = await fetch("/api/deals/columns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, color }),
+        body: JSON.stringify({ name, color, isClosedStage }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -253,6 +253,7 @@ export default function DealsBoard({ initialColumns }: Props) {
         <ColumnModal
           initialName={columnModal.column?.name}
           initialColor={columnModal.column?.color}
+          initialIsClosedStage={columnModal.column?.isClosedStage}
           onClose={() => setColumnModal({ open: false })}
           onSave={saveColumn}
         />
@@ -350,6 +351,7 @@ function ColumnItem({
                     key={deal.id}
                     deal={deal}
                     index={idx}
+                    isClosedStage={col.isClosedStage}
                     onClick={() => onCardClick(deal)}
                   />
                 ))}

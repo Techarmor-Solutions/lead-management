@@ -8,7 +8,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, color, position } = body;
+    const { name, color, position, isClosedStage } = body;
 
     const column = await prisma.pipelineColumn.update({
       where: { id },
@@ -16,6 +16,7 @@ export async function PUT(
         ...(name !== undefined && { name }),
         ...(color !== undefined && { color }),
         ...(position !== undefined && { position }),
+        ...(isClosedStage !== undefined && { isClosedStage }),
       },
       include: { deals: true },
     });

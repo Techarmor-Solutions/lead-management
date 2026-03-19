@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const position = (maxPos._max.position ?? -1) + 1;
 
     const column = await prisma.pipelineColumn.create({
-      data: { name, color: color || "#3b82f6", position },
+      data: { name, color: color || "#3b82f6", position, isClosedStage: body.isClosedStage ?? false },
       include: { deals: true },
     });
 

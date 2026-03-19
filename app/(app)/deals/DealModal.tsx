@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Trash2, Search } from "lucide-react";
-import { Column, Deal, DealContactEntry } from "./types";
+import { X, Trash2, Search, Clock } from "lucide-react";
+import { Column, Deal, DealContactEntry, StageHistory } from "./types";
 
 interface ContactOption {
   id: string;
@@ -20,11 +20,32 @@ interface Props {
   onDelete?: () => Promise<void>;
 }
 
+function formatDuration(ms: number): string {
+  const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((ms % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  if (days === 0 && hours === 0) return "< 1 hour";
+  if (days === 0) return `${hours}h`;
+  if (days === 1) return "1 day";
+  return `${days} days`;
+}
+
+function stageDuration(h: StageHistory): string {
+  const end = h.exitedAt ? new Date(h.exitedAt).getTime() : Date.now();
+  return formatDuration(end - new Date(h.enteredAt).getTime());
+}
+
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 export default function DealModal({ deal, columns, defaultColumnId, onClose, onSave, onDelete }: Props) {
   const [title, setTitle] = useState(deal?.title ?? "");
   const [value, setValue] = useState(deal?.value != null ? String(deal.value) : "");
   const [notes, setNotes] = useState(deal?.notes ?? "");
   const [columnId, setColumnId] = useState(deal?.columnId ?? defaultColumnId ?? columns[0]?.id ?? "");
+  const [closeDate, setCloseDate] = useState(
+    deal?.closeDate ? new Date(deal.closeDate).toISOString().split("T")[0] : ""
+  );
   const [contacts, setContacts] = useState<DealContactEntry[]>(deal?.contacts ?? []);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -53,7 +74,7 @@ export default function DealModal({ deal, columns, defaultColumnId, onClose, onS
   }, [contactSearch]);
 
   async function addContact(c: ContactOption) {
-    if (!deal) return; // need deal id to persist — add optimistically via parent after deal created
+    if (!deal) return;
     if (contacts.some((dc) => dc.contactId === c.id)) return;
     const res = await fetch(`/api/deals/${deal.id}/contacts`, {
       method: "POST",
@@ -77,7 +98,13 @@ export default function DealModal({ deal, columns, defaultColumnId, onClose, onS
   async function handleSave() {
     if (!title.trim()) return;
     setSaving(true);
-    await onSave({ title: title.trim(), value: value ? parseFloat(value) : null, notes: notes || null, columnId });
+    await onSave({
+      title: title.trim(),
+      value: value ? parseFloat(value) : null,
+      notes: notes || null,
+      closeDate: closeDate || null,
+      columnId,
+    });
     setSaving(false);
   }
 
@@ -88,6 +115,8 @@ export default function DealModal({ deal, columns, defaultColumnId, onClose, onS
     setDeleting(false);
   }
 
+  const stageHistory = deal?.stageHistory ?? [];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-lg p-6 space-y-5 max-h-[90vh] overflow-y-auto">
@@ -97,6 +126,13 @@ export default function DealModal({ deal, columns, defaultColumnId, onClose, onS
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Created date (edit mode only) */}
+        {deal && (
+          <p className="text-zinc-500 text-xs">
+            Created {fmtDate(deal.createdAt)}
+          </p>
+        )}
 
         {/* Title */}
         <div>
@@ -110,19 +146,30 @@ export default function DealModal({ deal, columns, defaultColumnId, onClose, onS
           />
         </div>
 
-        {/* Value */}
-        <div>
-          <label className="text-zinc-400 text-sm block mb-1">Deal Value</label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
+        {/* Value + Close Date side by side */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-zinc-400 text-sm block mb-1">Deal Value</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
+              <input
+                className="input w-full pl-7"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-zinc-400 text-sm block mb-1">Expected Close</label>
             <input
-              className="input w-full pl-7"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
+              className="input w-full"
+              type="date"
+              value={closeDate}
+              onChange={(e) => setCloseDate(e.target.value)}
             />
           </div>
         </div>
@@ -209,6 +256,46 @@ export default function DealModal({ deal, columns, defaultColumnId, onClose, onS
                 </ul>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Stage History */}
+        {deal && stageHistory.length > 0 && (
+          <div>
+            <label className="text-zinc-400 text-sm flex items-center gap-1.5 mb-3">
+              <Clock className="w-3.5 h-3.5" />
+              Stage History
+            </label>
+            <ol className="relative border-l border-zinc-700 space-y-4 ml-2">
+              {stageHistory.map((h, i) => {
+                const isCurrent = !h.exitedAt;
+                return (
+                  <li key={h.id} className="ml-4">
+                    <span
+                      className="absolute -left-1.5 w-3 h-3 rounded-full border-2 border-zinc-900"
+                      style={{ backgroundColor: h.column.color }}
+                    />
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm font-medium ${isCurrent ? "text-white" : "text-zinc-300"}`}>
+                        {h.column.name}
+                        {isCurrent && (
+                          <span className="ml-2 text-[10px] bg-zinc-700 text-zinc-300 px-1.5 py-0.5 rounded-full">
+                            current
+                          </span>
+                        )}
+                      </span>
+                      <span className={`text-xs ${h.column.isClosedStage ? "text-zinc-600" : "text-zinc-400"}`}>
+                        {h.column.isClosedStage ? "—" : stageDuration(h)}
+                      </span>
+                    </div>
+                    <p className="text-zinc-500 text-xs mt-0.5">
+                      {fmtDate(h.enteredAt)}
+                      {h.exitedAt && ` → ${fmtDate(h.exitedAt)}`}
+                    </p>
+                  </li>
+                );
+              })}
+            </ol>
           </div>
         )}
 

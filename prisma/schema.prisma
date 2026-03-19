@@ -260,30 +260,46 @@ model ContactListMember {
 }
 
 model PipelineColumn {
-  id        String   @id @default(cuid())
-  name      String
-  color     String   @default("#3b82f6")
-  position  Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deals     Deal[]
+  id            String   @id @default(cuid())
+  name          String
+  color         String   @default("#3b82f6")
+  position      Int
+  isClosedStage Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deals         Deal[]
+  stageHistory  DealStageHistory[]
 
   @@map("pipeline_columns")
 }
 
 model Deal {
-  id        String         @id @default(cuid())
-  title     String
-  value     Float?
-  notes     String?
-  columnId  String
-  position  Int            @default(0)
-  column    PipelineColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
-  contacts  DealContact[]
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  id           String             @id @default(cuid())
+  title        String
+  value        Float?
+  notes        String?
+  closeDate    DateTime?
+  columnId     String
+  position     Int                @default(0)
+  column       PipelineColumn     @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  contacts     DealContact[]
+  stageHistory DealStageHistory[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
 
   @@map("deals")
+}
+
+model DealStageHistory {
+  id        String         @id @default(cuid())
+  dealId    String
+  columnId  String
+  enteredAt DateTime       @default(now())
+  exitedAt  DateTime?
+  deal      Deal           @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  column    PipelineColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+
+  @@map("deal_stage_history")
 }
 
 model DealContact {

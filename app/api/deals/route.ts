@@ -2,59 +2,44 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
 const DEFAULT_COLUMNS = [
-  { name: "Prospect", color: "#3b82f6", position: 0 },
-  { name: "Proposal Sent", color: "#f59e0b", position: 1 },
-  { name: "Closed Won", color: "#10b981", position: 2 },
+  { name: "Prospect", color: "#3b82f6", position: 0, isClosedStage: false },
+  { name: "Proposal Sent", color: "#f59e0b", position: 1, isClosedStage: false },
+  { name: "Closed Won", color: "#10b981", position: 2, isClosedStage: true },
 ];
+
+const dealInclude = {
+  contacts: {
+    include: {
+      contact: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          company: { select: { name: true } },
+        },
+      },
+    },
+  },
+  stageHistory: {
+    orderBy: { enteredAt: "asc" as const },
+    include: {
+      column: { select: { name: true, color: true, isClosedStage: true } },
+    },
+  },
+};
 
 export async function GET() {
   try {
     let columns = await prisma.pipelineColumn.findMany({
       orderBy: { position: "asc" },
-      include: {
-        deals: {
-          orderBy: { position: "asc" },
-          include: {
-            contacts: {
-              include: {
-                contact: {
-                  select: {
-                    id: true,
-                    firstName: true,
-                    lastName: true,
-                    company: { select: { name: true } },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
+      include: { deals: { orderBy: { position: "asc" }, include: dealInclude } },
     });
 
     if (columns.length === 0) {
       await prisma.pipelineColumn.createMany({ data: DEFAULT_COLUMNS });
       columns = await prisma.pipelineColumn.findMany({
         orderBy: { position: "asc" },
-        include: {
-          deals: {
-            orderBy: { position: "asc" },
-            include: {
-              contacts: {
-                include: {
-                  contact: {
-                    select: {
-                      id: true,
-                      firstName: true,
-                      lastName: true,
-                      company: { select: { name: true } },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
+        include: { deals: { orderBy: { position: "asc" }, include: dealInclude } },
       });
     }
 
@@ -68,7 +53,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, value, notes, columnId } = body;
+    const { title, value, notes, closeDate, columnId } = body;
 
     if (!title || !columnId) {
       return NextResponse.json({ error: "title and columnId required" }, { status: 400 });
@@ -81,21 +66,16 @@ export async function POST(request: Request) {
     const position = (maxPos._max.position ?? -1) + 1;
 
     const deal = await prisma.deal.create({
-      data: { title, value: value ? parseFloat(value) : null, notes: notes || null, columnId, position },
-      include: {
-        contacts: {
-          include: {
-            contact: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                company: { select: { name: true } },
-              },
-            },
-          },
-        },
+      data: {
+        title,
+        value: value ? parseFloat(value) : null,
+        notes: notes || null,
+        closeDate: closeDate ? new Date(closeDate) : null,
+        columnId,
+        position,
+        stageHistory: { create: { columnId } },
       },
+      include: dealInclude,
     });
 
     return NextResponse.json({ deal }, { status: 201 });
