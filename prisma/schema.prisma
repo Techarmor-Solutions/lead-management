@@ -70,6 +70,7 @@ model Contact {
   sends           Send[]
   listMemberships ContactListMember[]
   activities      Activity[]
+  deals           DealContact[]
 
   @@map("contacts")
 }
@@ -256,6 +257,45 @@ model ContactListMember {
 
   @@unique([listId, contactId])
   @@map("contact_list_members")
+}
+
+model PipelineColumn {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#3b82f6")
+  position  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deals     Deal[]
+
+  @@map("pipeline_columns")
+}
+
+model Deal {
+  id        String         @id @default(cuid())
+  title     String
+  value     Float?
+  notes     String?
+  columnId  String
+  position  Int            @default(0)
+  column    PipelineColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  contacts  DealContact[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@map("deals")
+}
+
+model DealContact {
+  id        String   @id @default(cuid())
+  dealId    String
+  contactId String
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([dealId, contactId])
+  @@map("deal_contacts")
 }
 
 model GmailCredential {
