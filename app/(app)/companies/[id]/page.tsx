@@ -6,7 +6,7 @@ import CategoryEditor from "./CategoryEditor";
 import ContactCard from "./ContactCard";
 import AddContactButton from "./AddContactButton";
 import Link from "next/link";
-import { Globe, Phone, MapPin, Star, ArrowLeft, Building2 } from "lucide-react";
+import { Globe, Phone, MapPin, Star, ArrowLeft, Building2, Handshake } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +14,39 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const company = await prisma.company.findUnique({
     where: { id },
-    include: { contacts: { orderBy: { createdAt: "desc" } } },
+    include: {
+      contacts: {
+        orderBy: { createdAt: "desc" },
+        include: {
+          deals: {
+            include: {
+              deal: { include: { column: true } },
+            },
+          },
+        },
+      },
+    },
   });
 
   if (!company) notFound();
+
+  // Collect unique deals across all contacts
+  type DealEntry = { deal: (typeof company.contacts)[0]["deals"][0]["deal"]; contactNames: string[] };
+  const dealMap = new Map<string, DealEntry>();
+  for (const contact of company.contacts) {
+    for (const dc of contact.deals) {
+      const name = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || contact.email;
+      if (dealMap.has(dc.dealId)) {
+        dealMap.get(dc.dealId)!.contactNames.push(name);
+      } else {
+        dealMap.set(dc.dealId, { deal: dc.deal, contactNames: [name] });
+      }
+    }
+  }
+
+  const allDeals = Array.from(dealMap.values());
+  const openDeals = allDeals.filter((d) => !d.deal.column.isClosedStage);
+  const closedDeals = allDeals.filter((d) => d.deal.column.isClosedStage);
 
   const enrichment = company.enrichmentData as Record<string, unknown> | null;
 
@@ -93,6 +122,66 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
             )}
           </div>
           <div className="text-xs text-zinc-600 mt-3">Enriched {formatDate(company.enrichedAt)}</div>
+        </div>
+      )}
+
+      {/* Deals */}
+      {allDeals.length > 0 && (
+        <div className="mb-6">
+          <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
+            <Handshake className="w-4 h-4 text-[#eb9447]" />
+            Deals ({allDeals.length})
+          </h2>
+          <div className="space-y-2">
+            {openDeals.length > 0 && (
+              <>
+                <div className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-1">Open</div>
+                {openDeals.map(({ deal, contactNames }) => (
+                  <Link key={deal.id} href="/deals" className="flex items-center justify-between bg-[#1a1a1a] border border-zinc-800 rounded-xl px-4 py-3 hover:border-zinc-600 transition-colors">
+                    <div>
+                      <div className="text-sm font-medium text-white">{deal.title}</div>
+                      <div className="text-xs text-zinc-500 mt-0.5">{contactNames.join(", ")}</div>
+                    </div>
+                    <div className="flex items-center gap-3 text-right">
+                      {deal.value != null && (
+                        <span className="text-sm font-semibold text-[#eb9447]">${deal.value.toLocaleString()}</span>
+                      )}
+                      <span
+                        className="text-xs px-2 py-0.5 rounded-full font-medium"
+                        style={{ backgroundColor: deal.column.color + "22", color: deal.column.color }}
+                      >
+                        {deal.column.name}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </>
+            )}
+            {closedDeals.length > 0 && (
+              <>
+                <div className="text-xs font-medium text-zinc-500 uppercase tracking-wider mt-3 mb-1">Closed</div>
+                {closedDeals.map(({ deal, contactNames }) => (
+                  <Link key={deal.id} href="/deals" className="flex items-center justify-between bg-[#1a1a1a] border border-zinc-800 rounded-xl px-4 py-3 hover:border-zinc-600 transition-colors opacity-60">
+                    <div>
+                      <div className="text-sm font-medium text-white">{deal.title}</div>
+                      <div className="text-xs text-zinc-500 mt-0.5">{contactNames.join(", ")}</div>
+                    </div>
+                    <div className="flex items-center gap-3 text-right">
+                      {deal.value != null && (
+                        <span className="text-sm font-semibold text-zinc-400">${deal.value.toLocaleString()}</span>
+                      )}
+                      <span
+                        className="text-xs px-2 py-0.5 rounded-full font-medium"
+                        style={{ backgroundColor: deal.column.color + "22", color: deal.column.color }}
+                      >
+                        {deal.column.name}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </>
+            )}
+          </div>
         </div>
       )}
 
