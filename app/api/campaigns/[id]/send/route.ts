@@ -38,15 +38,12 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
     data: { status: "ACTIVE", sentAt: new Date() },
   });
 
-  // Group sends by contact, sort by step number
-  // For step 1 (delayDays = 0): send now
-  // For subsequent steps: schedule via pg-boss (simplified: we just schedule them here)
-  const step1Sends = campaign.sends.filter((s) => s.step.stepNumber === 1);
-  const laterSends = campaign.sends.filter((s) => s.step.stepNumber > 1);
+  const step1EmailSends = campaign.sends.filter((s) => s.step.stepNumber === 1 && s.step.stepType === "EMAIL");
+  const scheduledSends = campaign.sends.filter((s) => s.step.stepNumber > 1 || s.step.stepType !== "EMAIL");
 
-  // Send step 1 immediately (throttled: spread across time)
+  // Send step 1 email immediately (throttled: spread across time)
   let sendCount = 0;
-  for (const send of step1Sends) {
+  for (const send of step1EmailSends) {
     const { contact, step } = send;
 
     const subject = applyPersonalizationTags(step.subject, contact, contact.company, senderName);
@@ -108,8 +105,8 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
     }
   }
 
-  // Mark later steps as SCHEDULED (they'll be processed by the scheduler)
-  for (const send of laterSends) {
+  // Mark all remaining sends as SCHEDULED (emails processed by cron, tasks shown in task list)
+  for (const send of scheduledSends) {
     await prisma.send.update({
       where: { id: send.id },
       data: { status: "SCHEDULED" },

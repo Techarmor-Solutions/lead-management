@@ -38,10 +38,9 @@ export async function POST(req: NextRequest) {
 
   // Templates have no contacts — skip Send record creation
   if (!isTemplate && contactIds?.length > 0) {
-    const emailSteps = campaign.steps.filter((s) => s.stepType === "EMAIL");
     const sendData = [];
     for (const contactId of contactIds) {
-      for (const step of emailSteps) {
+      for (const step of campaign.steps) {
         sendData.push({ campaignId: campaign.id, contactId, stepId: step.id });
       }
     }

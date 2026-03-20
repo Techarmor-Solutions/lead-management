@@ -1,17 +1,12 @@
 import { prisma } from "@/lib/db";
 import { formatDate, pct } from "@/lib/utils";
 import Link from "next/link";
-import { Building2, Users, Mail, TrendingUp, ArrowRight } from "lucide-react";
+import { Building2, Users, Mail, TrendingUp, ArrowRight, Phone, Linkedin, CheckSquare, MessageSquare } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const [
-    companyCount,
-    contactCount,
-    campaigns,
-    recentSends,
-  ] = await Promise.all([
+  const [companyCount, contactCount, campaigns, recentSends, scheduledTasks] = await Promise.all([
     prisma.company.count(),
     prisma.contact.count(),
     prisma.campaign.findMany({
@@ -21,9 +16,35 @@ export default async function DashboardPage() {
     }),
     prisma.send.aggregate({
       _count: { id: true },
-      where: { sentAt: { not: null } },
+      where: { sentAt: { not: null }, step: { stepType: "EMAIL" } },
+    }),
+    prisma.send.findMany({
+      where: {
+        status: "SCHEDULED",
+        step: { stepType: { in: ["CALL", "TASK", "LINKEDIN_CONNECT", "LINKEDIN_MESSAGE"] } },
+        campaign: { status: "ACTIVE" },
+      },
+      include: {
+        contact: { include: { company: { select: { name: true } } } },
+        step: { select: { stepNumber: true, stepType: true, label: true } },
+        campaign: { select: { id: true, name: true, sentAt: true, steps: { select: { stepNumber: true, delayDays: true } } } },
+      },
+      orderBy: { createdAt: "asc" },
     }),
   ]);
+
+  const now = new Date();
+  const dueTasks = scheduledTasks
+    .map((send) => {
+      const totalDelayDays = send.campaign.steps
+        .filter((s) => s.stepNumber <= send.step.stepNumber)
+        .reduce((sum, s) => sum + s.delayDays, 0);
+      const dueAt = new Date((send.campaign.sentAt?.getTime() ?? Date.now()) + totalDelayDays * 86400000);
+      return { ...send, dueAt, isOverdue: dueAt < now, isDueToday: dueAt.toDateString() === now.toDateString() };
+    })
+    .filter((t) => t.isOverdue || t.isDueToday)
+    .sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime())
+    .slice(0, 5);
 
   const openCount = await prisma.send.count({ where: { openedAt: { not: null } } });
   const responseCount = await prisma.send.count({ where: { respondedAt: { not: null } } });
@@ -69,6 +90,42 @@ export default async function DashboardPage() {
           );
         })}
       </div>
+
+      {/* Due Tasks */}
+      {dueTasks.length > 0 && (
+        <div className="bg-[#1a1a1a] border border-[#eb9447]/30 rounded-xl mb-6">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+            <h2 className="font-semibold text-white flex items-center gap-2">
+              <CheckSquare className="w-4 h-4 text-[#eb9447]" />
+              Tasks Due
+              <span className="text-xs bg-[#eb9447]/15 text-[#eb9447] px-1.5 py-0.5 rounded-full ml-1">{dueTasks.length}</span>
+            </h2>
+            <Link href="/tasks" className="text-sm text-[#eb9447] hover:text-[#f0a86a]">View all →</Link>
+          </div>
+          <div className="divide-y divide-zinc-800">
+            {dueTasks.map((task) => {
+              const icons: Record<string, React.ReactNode> = {
+                CALL: <Phone className="w-3.5 h-3.5 text-green-400" />,
+                LINKEDIN_CONNECT: <Linkedin className="w-3.5 h-3.5 text-sky-400" />,
+                LINKEDIN_MESSAGE: <MessageSquare className="w-3.5 h-3.5 text-sky-400" />,
+                TASK: <CheckSquare className="w-3.5 h-3.5 text-amber-400" />,
+              };
+              const contactName = [task.contact.firstName, task.contact.lastName].filter(Boolean).join(" ") || task.contact.email;
+              return (
+                <Link key={task.id} href="/tasks" className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-800/30 transition-colors">
+                  <div className="flex-shrink-0">{icons[task.step.stepType]}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-white truncate">{contactName} — {task.contact.company.name}</div>
+                    <div className="text-xs text-zinc-500 truncate">{task.step.label} · {task.campaign.name}</div>
+                  </div>
+                  {task.isOverdue && <span className="text-xs text-red-400 flex-shrink-0">Overdue</span>}
+                  {task.isDueToday && !task.isOverdue && <span className="text-xs text-[#eb9447] flex-shrink-0">Today</span>}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Recent Campaigns */}
       <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl">

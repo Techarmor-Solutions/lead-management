@@ -58,12 +58,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       )
     );
 
-    // Recreate pending sends for email steps
-    const emailSteps = newSteps.filter((s) => s.stepType === "EMAIL");
-    if (contactIds.length > 0 && emailSteps.length > 0) {
+    // Recreate pending sends for all steps
+    if (contactIds.length > 0 && newSteps.length > 0) {
       const sendData = [];
       for (const contactId of contactIds) {
-        for (const step of emailSteps) {
+        for (const step of newSteps) {
           sendData.push({ campaignId: id, contactId, stepId: step.id });
         }
       }

@@ -91,6 +91,9 @@ export async function runProcessScheduled(): Promise<{ processed: number }> {
         continue;
       }
 
+      // Non-email steps are manual tasks — skip auto-sending
+      if (send.step.stepType !== "EMAIL") continue;
+
       const { contact, step } = send;
       const subject = applyPersonalizationTags(step.subject, contact, contact.company, senderName);
       const bodyHtml = applyPersonalizationTags(step.body, contact, contact.company, senderName);

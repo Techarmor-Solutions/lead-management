@@ -26,9 +26,9 @@ export function injectTracking(
     const trackUrl = `${appUrl}/api/track/click/${token}?url=${encodeURIComponent(originalUrl)}`;
     // Replace existing href="originalUrl" anchors
     result = result.replaceAll(`href="${originalUrl}"`, `href="${trackUrl}"`);
-    // Replace any remaining raw URL text (not inside an href) with a tracked anchor
+    // Replace any remaining raw URL text (not inside any HTML attribute) with a tracked anchor
     result = result.replace(
-      new RegExp(`(?<!href=["'])${escapeRegex(originalUrl)}`, "g"),
+      new RegExp(`(?<![="'])${escapeRegex(originalUrl)}`, "g"),
       `<a href="${trackUrl}">${originalUrl}</a>`
     );
   }
