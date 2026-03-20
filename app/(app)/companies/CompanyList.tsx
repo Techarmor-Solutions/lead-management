@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import { Building2, Users, Globe, MapPin, Star, ChevronLeft, ChevronRight, Plus, X, Upload, Trash2, Pencil, Check, Zap } from "lucide-react";
+import { useState } from "react";
+import { Building2, Users, Globe, MapPin, Star, ChevronLeft, ChevronRight, Plus, X, Upload, Trash2, Pencil, Check, Zap, Square, CheckSquare } from "lucide-react";
 import CsvImportModal from "@/components/CsvImportModal";
 
 interface Company {
@@ -61,6 +61,8 @@ export default function CompanyList({
   const totalPages = Math.ceil(total / limit);
 
   // Bulk enrichment state
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkEnrich, setShowBulkEnrich] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<{
     current: number;
@@ -70,6 +72,30 @@ export default function CompanyList({
     done: boolean;
   } | null>(null);
   const [bulkCancelled, setBulkCancelled] = useState(false);
+
+  function toggleSelect(e: React.MouseEvent, id: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function cancelSelection() {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }
+
+  function startEnrichSelected() {
+    const ids = Array.from(selectedIds);
+    cancelSelection();
+    setBulkProgress(null);
+    setShowBulkEnrich(true);
+    runBulkEnrich(ids);
+  }
 
   async function saveCategory(e: React.MouseEvent | React.KeyboardEvent, companyId: string) {
     e.preventDefault();
@@ -194,13 +220,23 @@ export default function CompanyList({
           <Upload className="w-4 h-4" />
           Import CSV
         </button>
-        <button
-          onClick={() => { setShowBulkEnrich(true); setBulkProgress(null); }}
-          className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
-        >
-          <Zap className="w-4 h-4" />
-          Bulk Enrich (Lite)
-        </button>
+        {selectionMode ? (
+          <button
+            onClick={cancelSelection}
+            className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white px-4 py-2 rounded-lg text-sm transition-colors"
+          >
+            <X className="w-4 h-4" />
+            Cancel
+          </button>
+        ) : (
+          <button
+            onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
+            className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+          >
+            <Zap className="w-4 h-4" />
+            Bulk Enrich (Lite)
+          </button>
+        )}
         <button
           onClick={() => setShowModal(true)}
           className="flex items-center gap-1.5 bg-[#eb9447] hover:bg-[#d4833a] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -209,6 +245,35 @@ export default function CompanyList({
           Add Company
         </button>
       </div>
+
+      {selectionMode && (
+        <div className="flex items-center gap-2 mb-3 px-4 py-3 bg-zinc-900 border border-zinc-700 rounded-xl flex-wrap">
+          <span className="text-sm text-zinc-400 mr-1">
+            <span className="text-white font-medium">{selectedIds.size}</span> selected
+          </span>
+          <button
+            onClick={() => setSelectedIds(new Set(companies.map((c) => c.id)))}
+            className="text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded-lg transition-colors"
+          >
+            Select All
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded-lg transition-colors"
+          >
+            Deselect All
+          </button>
+          <div className="flex-1" />
+          <button
+            onClick={startEnrichSelected}
+            disabled={selectedIds.size === 0}
+            className="flex items-center gap-1.5 text-sm bg-[#eb9447] hover:bg-[#d4833a] disabled:opacity-50 text-white px-4 py-1.5 rounded-lg font-medium transition-colors"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            Enrich Selected ({selectedIds.size})
+          </button>
+        </div>
+      )}
 
       <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl overflow-hidden">
         {companies.length === 0 ? (
@@ -228,6 +293,19 @@ export default function CompanyList({
                   href={`/companies/${c.id}`}
                   className="flex items-center justify-between px-5 py-4 hover:bg-zinc-800/30 transition-colors"
                 >
+                  {selectionMode && (
+                    <button
+                      onClick={(e) => toggleSelect(e, c.id)}
+                      className="flex-shrink-0 mr-3 text-zinc-500 hover:text-[#eb9447] transition-colors"
+                      aria-label={selectedIds.has(c.id) ? "Deselect" : "Select"}
+                    >
+                      {selectedIds.has(c.id) ? (
+                        <CheckSquare className="w-4 h-4 text-[#eb9447]" />
+                      ) : (
+                        <Square className="w-4 h-4" />
+                      )}
+                    </button>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-white">{c.name}</span>
@@ -335,7 +413,6 @@ export default function CompanyList({
         <BulkEnrichModal
           onClose={() => { setShowBulkEnrich(false); setBulkProgress(null); }}
           progress={bulkProgress}
-          onStart={runBulkEnrich}
           cancelled={bulkCancelled}
           onCancel={() => setBulkCancelled(true)}
         />
@@ -458,26 +535,11 @@ export default function CompanyList({
 interface BulkEnrichModalProps {
   onClose: () => void;
   progress: { current: number; total: number; hunterHits: number; aiHits: number; done: boolean } | null;
-  onStart: (ids: string[]) => void;
   cancelled: boolean;
   onCancel: () => void;
 }
 
-function BulkEnrichModal({ onClose, progress, onStart, cancelled, onCancel }: BulkEnrichModalProps) {
-  const [loading, setLoading] = useState(true);
-  const [unenrichedIds, setUnenrichedIds] = useState<string[]>([]);
-
-  // Fetch unenriched companies on mount
-  useEffect(() => {
-    fetch("/api/companies/unenriched")
-      .then((r) => r.json())
-      .then((data) => {
-        setUnenrichedIds(data.ids ?? []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
-
+function BulkEnrichModal({ onClose, progress, cancelled, onCancel }: BulkEnrichModalProps) {
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
       <div className="bg-[#1a1a1a] border border-zinc-700 rounded-xl p-6 w-full max-w-sm">
@@ -486,25 +548,25 @@ function BulkEnrichModal({ onClose, progress, onStart, cancelled, onCancel }: Bu
             <Zap className="w-4 h-4 text-[#eb9447]" />
             <h3 className="font-semibold text-white">Bulk Enrich (Lite)</h3>
           </div>
-          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
-            <X className="w-4 h-4" />
-          </button>
+          {progress?.done && (
+            <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
-        {loading ? (
-          <p className="text-sm text-zinc-400">Checking companies...</p>
-        ) : progress ? (
+        {progress ? (
           <div className="space-y-3">
             {!progress.done ? (
               <>
-                <p className="text-sm text-zinc-400">Enriching companies... this may take a few minutes.</p>
+                <p className="text-sm text-zinc-400">Enriching companies… this may take a few minutes.</p>
                 <div className="w-full bg-zinc-800 rounded-full h-2">
                   <div
                     className="bg-[#eb9447] h-2 rounded-full transition-all"
                     style={{ width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%` }}
                   />
                 </div>
-                <p className="text-xs text-zinc-500">Processing {progress.total} companies...</p>
+                <p className="text-xs text-zinc-500">Processing {progress.total} companies…</p>
                 {!cancelled && (
                   <button onClick={onCancel} className="text-xs text-zinc-500 hover:text-white transition-colors">
                     Cancel
@@ -531,30 +593,7 @@ function BulkEnrichModal({ onClose, progress, onStart, cancelled, onCancel }: Bu
             )}
           </div>
         ) : (
-          <div className="space-y-3">
-            <p className="text-sm text-zinc-400">
-              {unenrichedIds.length === 0
-                ? "All companies are already enriched."
-                : <>
-                    <span className="text-white font-medium">{unenrichedIds.length}</span> companies need enrichment.
-                    Uses Hunter (free) + Haiku AI (~$0.03–0.05/company).
-                  </>
-              }
-            </p>
-            <div className="flex gap-2 justify-end">
-              <button onClick={onClose} className="px-3 py-2 text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors">
-                Cancel
-              </button>
-              <button
-                onClick={() => onStart(unenrichedIds)}
-                disabled={unenrichedIds.length === 0}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm bg-[#eb9447] hover:bg-[#d4833a] disabled:opacity-50 text-white rounded-lg font-medium transition-colors"
-              >
-                <Zap className="w-3.5 h-3.5" />
-                Start Enrichment
-              </button>
-            </div>
-          </div>
+          <p className="text-sm text-zinc-400">Starting enrichment…</p>
         )}
       </div>
     </div>
