@@ -52,6 +52,40 @@ export default function CampaignActions({ campaign }: Props) {
     router.push("/campaigns");
   }
 
+  // Draft campaign: Edit + Mark Ready
+  if (!campaign.isTemplate && campaign.status === "DRAFT") {
+    return (
+      <div className="flex items-center gap-2">
+        <Link
+          href={`/campaigns/${campaign.id}/edit`}
+          className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+        >
+          <Pencil className="w-4 h-4" />
+          Edit
+        </Link>
+        <button
+          onClick={() => updateStatus("READY")}
+          disabled={loading}
+          className="flex items-center gap-2 bg-[#eb9447] hover:bg-[#d4833a] text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+        >
+          <CheckCircle className="w-4 h-4" />
+          {loading ? "Saving..." : "Mark as Ready"}
+        </button>
+        {confirm === "delete" ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-zinc-400">Delete?</span>
+            <button onClick={deleteCampaign} className="text-sm bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg transition-colors">Delete</button>
+            <button onClick={() => setConfirm(null)} className="text-sm text-zinc-400 hover:text-white px-2 py-1.5">Cancel</button>
+          </div>
+        ) : (
+          <button onClick={() => setConfirm("delete")} className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-colors">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+    );
+  }
+
   // Template view: "Edit", "Use Template" + delete
   if (campaign.isTemplate) {
     return (

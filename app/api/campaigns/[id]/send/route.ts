@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/gmail";
 import { applyPersonalizationTags, buildEmailHtml, htmlToPlainText } from "@/lib/utils";
 import { generateToken, injectTracking, extractLinks } from "@/lib/tracking";
+import { getGmailSignature } from "@/lib/gmail";
 
 export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -29,6 +30,7 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const agencyProfile = await prisma.agencyProfile.findFirst();
   const senderName = agencyProfile?.name || "Caleb";
+  const signature = await getGmailSignature();
 
   // Update campaign status
   await prisma.campaign.update({
@@ -51,7 +53,7 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
     const bodyHtml = applyPersonalizationTags(step.body, contact, contact.company, senderName);
 
     const unsubscribeUrl = `${appUrl}/api/unsubscribe?cid=${contact.id}`;
-    const fullHtml = buildEmailHtml(bodyHtml, step.ctaText, step.ctaUrl, unsubscribeUrl);
+    const fullHtml = buildEmailHtml(bodyHtml, step.ctaText, step.ctaUrl, unsubscribeUrl, signature);
 
     // Create tracking tokens
     const openToken = generateToken();

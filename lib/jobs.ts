@@ -1,5 +1,5 @@
 import { prisma } from "./db";
-import { pollForReplies, sendEmail } from "./gmail";
+import { pollForReplies, pollForBounces, sendEmail, getGmailSignature } from "./gmail";
 import { applyPersonalizationTags, buildEmailHtml, htmlToPlainText } from "./utils";
 import { generateToken, injectTracking, extractLinks } from "./tracking";
 
@@ -67,6 +67,7 @@ export async function runProcessScheduled(): Promise<{ processed: number }> {
   const agencyProfile = await prisma.agencyProfile.findFirst();
   const senderName = agencyProfile?.name || "Caleb";
   const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
+  const signature = await getGmailSignature();
 
   for (const campaign of activeCampaigns) {
     const sentAt = campaign.sentAt;
@@ -95,7 +96,7 @@ export async function runProcessScheduled(): Promise<{ processed: number }> {
       const bodyHtml = applyPersonalizationTags(step.body, contact, contact.company, senderName);
 
       const unsubscribeUrl = `${appUrl}/api/unsubscribe?cid=${contact.id}`;
-      const fullHtml = buildEmailHtml(bodyHtml, step.ctaText, step.ctaUrl, unsubscribeUrl);
+      const fullHtml = buildEmailHtml(bodyHtml, step.ctaText, step.ctaUrl, unsubscribeUrl, signature);
 
       const openToken = generateToken();
       const links = extractLinks(fullHtml);
@@ -120,4 +121,27 @@ export async function runProcessScheduled(): Promise<{ processed: number }> {
   }
 
   return { processed };
+}
+
+export async function runPollBounces(): Promise<{ bounced: number }> {
+  const bouncedEmails = await pollForBounces();
+  let bounced = 0;
+
+  for (const email of bouncedEmails) {
+    const contact = await prisma.contact.findFirst({ where: { email } });
+    if (!contact) continue;
+
+    const result = await prisma.send.updateMany({
+      where: {
+        contactId: contact.id,
+        status: { in: ["SENT", "OPENED", "PENDING", "SCHEDULED"] },
+        bouncedAt: null,
+      },
+      data: { status: "BOUNCED", bouncedAt: new Date() },
+    });
+
+    if (result.count > 0) bounced++;
+  }
+
+  return { bounced };
 }

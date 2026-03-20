@@ -25,22 +25,50 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   // Replace steps if provided
   if (data.steps) {
-    await prisma.campaignStep.deleteMany({ where: { campaignId: id } });
-    await prisma.campaignStep.createMany({
-      data: data.steps.map(
-        (step: { label: string; stepType: string; delayDays: number; subject: string; body: string; ctaText?: string; ctaUrl?: string }, i: number) => ({
-          campaignId: id,
-          stepNumber: i + 1,
-          stepType: step.stepType || "EMAIL",
-          label: step.label,
-          delayDays: i === 0 ? 0 : step.delayDays,
-          subject: step.subject || "",
-          body: step.body || "",
-          ctaText: step.ctaText || null,
-          ctaUrl: step.ctaUrl || null,
-        })
-      ),
+    // Collect existing contact IDs from pending sends before deleting steps
+    const existingSends = await prisma.send.findMany({
+      where: { campaignId: id, status: { in: ["PENDING", "SCHEDULED"] } },
+      select: { contactId: true },
+      distinct: ["contactId"],
     });
+    const contactIds = existingSends.map((s) => s.contactId);
+
+    // Delete pending/scheduled sends (they reference old step IDs)
+    await prisma.send.deleteMany({ where: { campaignId: id, status: { in: ["PENDING", "SCHEDULED"] } } });
+
+    // Delete and recreate steps
+    await prisma.campaignStep.deleteMany({ where: { campaignId: id } });
+
+    type StepInput = { label: string; stepType: string; delayDays: number; subject: string; body: string; ctaText?: string; ctaUrl?: string };
+    const newSteps = await Promise.all(
+      (data.steps as StepInput[]).map((step, i) =>
+        prisma.campaignStep.create({
+          data: {
+            campaignId: id,
+            stepNumber: i + 1,
+            stepType: (step.stepType || "EMAIL") as import("@prisma/client").StepType,
+            label: step.label,
+            delayDays: i === 0 ? 0 : step.delayDays,
+            subject: step.subject || "",
+            body: step.body || "",
+            ctaText: step.ctaText || null,
+            ctaUrl: step.ctaUrl || null,
+          },
+        })
+      )
+    );
+
+    // Recreate pending sends for email steps
+    const emailSteps = newSteps.filter((s) => s.stepType === "EMAIL");
+    if (contactIds.length > 0 && emailSteps.length > 0) {
+      const sendData = [];
+      for (const contactId of contactIds) {
+        for (const step of emailSteps) {
+          sendData.push({ campaignId: id, contactId, stepId: step.id });
+        }
+      }
+      await prisma.send.createMany({ data: sendData, skipDuplicates: true });
+    }
   }
 
   return NextResponse.json(campaign);

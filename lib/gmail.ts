@@ -90,6 +90,83 @@ export async function sendEmail(params: {
   });
 }
 
+export async function getGmailSignature(): Promise<string> {
+  try {
+    const auth = await getAuthorizedClient();
+    const gmail = google.gmail({ version: "v1", auth });
+    const res = await gmail.users.settings.sendAs.list({ userId: "me" });
+    const sendAs = res.data.sendAs || [];
+    const primary = sendAs.find((s) => s.isPrimary) || sendAs[0];
+    return primary?.signature || "";
+  } catch {
+    return "";
+  }
+}
+
+function getMessageBody(payload: { parts?: Array<{ mimeType?: string; body?: { data?: string } }>; body?: { data?: string } } | undefined): string {
+  if (!payload) return "";
+  for (const part of payload.parts || []) {
+    if (part.mimeType === "text/plain" && part.body?.data) {
+      return Buffer.from(part.body.data, "base64").toString("utf-8");
+    }
+  }
+  if (payload.body?.data) {
+    return Buffer.from(payload.body.data, "base64").toString("utf-8");
+  }
+  return "";
+}
+
+export async function pollForBounces(): Promise<string[]> {
+  const auth = await getAuthorizedClient();
+  const gmail = google.gmail({ version: "v1", auth });
+
+  // Gmail bounce notifications come from mailer-daemon / postmaster
+  const res = await gmail.users.messages.list({
+    userId: "me",
+    q: '(from:mailer-daemon OR from:postmaster) newer_than:7d is:unread',
+    maxResults: 25,
+  });
+
+  const messages = res.data.messages || [];
+  const bouncedEmails: string[] = [];
+
+  for (const msg of messages) {
+    const detail = await gmail.users.messages.get({
+      userId: "me",
+      id: msg.id!,
+      format: "full",
+    });
+
+    const body = getMessageBody(detail.data.payload as Parameters<typeof getMessageBody>[0]);
+    const snippet = detail.data.snippet || "";
+    const content = snippet + "\n" + body;
+
+    // DSN format: "Final-Recipient: rfc822; user@example.com"
+    const dsnMatch = content.match(/Final-Recipient\s*:\s*rfc822\s*;\s*([^\s\r\n,]+@[^\s\r\n,]+)/i)
+      || content.match(/Original-Recipient\s*:\s*rfc822\s*;\s*([^\s\r\n,]+@[^\s\r\n,]+)/i);
+
+    // Plain-text bounce: "does not exist: email@example.com" or similar
+    const textMatch = !dsnMatch && (
+      content.match(/(?:does not exist|no such user|unknown user|invalid address|user unknown)[^a-zA-Z0-9]*([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/i)
+      || content.match(/(?:address not found|delivery failed)[^\n]*\n[^\n]*?([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/i)
+    );
+
+    const match = dsnMatch || textMatch;
+    if (match) {
+      bouncedEmails.push(match[1].toLowerCase().trim());
+    }
+
+    // Mark as read so we don't process it again
+    await gmail.users.messages.modify({
+      userId: "me",
+      id: msg.id!,
+      requestBody: { removeLabelIds: ["UNREAD"] },
+    });
+  }
+
+  return [...new Set(bouncedEmails)];
+}
+
 export async function pollForReplies(contactEmails: string[]): Promise<string[]> {
   if (contactEmails.length === 0) return [];
 

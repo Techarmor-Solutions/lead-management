@@ -47,6 +47,7 @@ interface Props {
   initialIndustry?: string;
   initialName?: string;
   editId?: string;
+  isTemplate?: boolean;
 }
 
 const DEFAULT_STEPS: Step[] = [
@@ -124,9 +125,11 @@ function toSteps(raw: TemplateStep[]): Step[] {
   }));
 }
 
-export default function CampaignBuilder({ contacts, agencyProfile, lists, initialSteps, initialIndustry, initialName, editId }: Props) {
+export default function CampaignBuilder({ contacts, agencyProfile, lists, initialSteps, initialIndustry, initialName, editId, isTemplate }: Props) {
   const router = useRouter();
-  const [mode, setMode] = useState<"campaign" | "template">(editId ? "template" : "campaign");
+  // editId + isTemplate=false means editing an existing campaign (not a template)
+  const editingCampaign = !!editId && !isTemplate;
+  const [mode, setMode] = useState<"campaign" | "template">(editId && isTemplate ? "template" : "campaign");
   const [name, setName] = useState(initialName || "");
   const [industry, setIndustry] = useState(initialIndustry || "");
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
@@ -246,7 +249,7 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
 
   async function handleSave(status: "DRAFT" | "READY") {
     if (!name.trim()) { alert("Campaign name required"); return; }
-    if (status === "READY" && selectedContactIds.size === 0) { alert("Select at least one contact"); return; }
+    if (!editingCampaign && status === "READY" && selectedContactIds.size === 0) { alert("Select at least one contact"); return; }
 
     if (status === "READY") {
       const invalidEmail = steps.find((s) => s.stepType === "EMAIL" && (!s.subject.trim() || !s.body.trim()));
@@ -257,6 +260,17 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
     }
 
     setSaving(true);
+
+    if (editingCampaign) {
+      await fetch(`/api/campaigns/${editId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, industry, steps }),
+      });
+      router.push(`/campaigns/${editId}`);
+      return;
+    }
+
     const res = await fetch("/api/campaigns", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -298,26 +312,28 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
 
   return (
     <div className="space-y-6">
-      {/* Mode toggle */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setMode("campaign")}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            mode === "campaign" ? "bg-[#eb9447] text-white" : "bg-zinc-800 text-zinc-400 hover:text-white"
-          }`}
-        >
-          Campaign
-        </button>
-        <button
-          onClick={() => setMode("template")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            mode === "template" ? "bg-purple-600 text-white" : "bg-zinc-800 text-zinc-400 hover:text-white"
-          }`}
-        >
-          <Copy className="w-3.5 h-3.5" />
-          Save as Template
-        </button>
-      </div>
+      {/* Mode toggle — hidden when editing an existing campaign */}
+      {!editingCampaign && (
+        <div className="flex gap-2">
+          <button
+            onClick={() => setMode("campaign")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              mode === "campaign" ? "bg-[#eb9447] text-white" : "bg-zinc-800 text-zinc-400 hover:text-white"
+            }`}
+          >
+            Campaign
+          </button>
+          <button
+            onClick={() => setMode("template")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              mode === "template" ? "bg-purple-600 text-white" : "bg-zinc-800 text-zinc-400 hover:text-white"
+            }`}
+          >
+            <Copy className="w-3.5 h-3.5" />
+            Save as Template
+          </button>
+        </div>
+      )}
 
       {mode === "template" && (
         <div className="bg-purple-900/20 border border-purple-600/30 rounded-xl px-4 py-3 text-sm text-purple-300">
@@ -346,9 +362,9 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
         </div>
       </div>
 
-      <div className={`grid gap-6 ${mode === "campaign" ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"}`}>
-        {/* Contact Selector — only in campaign mode */}
-        {mode === "campaign" && (
+      <div className={`grid gap-6 ${mode === "campaign" && !editingCampaign ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"}`}>
+        {/* Contact Selector — only in campaign create mode */}
+        {mode === "campaign" && !editingCampaign && (
           <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-white">Contacts ({selectedContactIds.size} selected)</h3>
@@ -582,7 +598,15 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
 
       {/* Actions */}
       <div className="flex items-center gap-3">
-        {mode === "campaign" ? (
+        {editingCampaign ? (
+          <button
+            onClick={() => handleSave("DRAFT")}
+            disabled={saving}
+            className="bg-[#eb9447] hover:bg-[#d4833a] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        ) : mode === "campaign" ? (
           <>
             <button
               onClick={() => handleSave("DRAFT")}

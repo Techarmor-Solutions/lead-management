@@ -32,6 +32,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
   const opens = campaign.sends.filter((s) => s.openedAt).length;
   const clicks = campaign.sends.filter((s) => s.clickedAt).length;
   const replies = campaign.sends.filter((s) => s.respondedAt).length;
+  const bounces = campaign.sends.filter((s) => s.bouncedAt).length;
 
   // Get unique contacts in this campaign
   const uniqueContacts = [...new Map(campaign.sends.map((s) => [s.contactId, s.contact])).values()];
@@ -62,12 +63,13 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
 
       {/* Metrics */}
       {totalSends > 0 && (
-        <div className="grid grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-5 gap-3 mb-6">
           {[
             { label: "Sent", value: totalSends },
             { label: "Open Rate", value: pct(opens, totalSends) },
             { label: "Click Rate", value: pct(clicks, totalSends) },
             { label: "Reply Rate", value: pct(replies, totalSends) },
+            { label: "Bounce Rate", value: pct(bounces, totalSends) },
           ].map((stat) => (
             <div key={stat.label} className="bg-[#1a1a1a] border border-zinc-800 rounded-xl p-4">
               <div className="text-xl font-bold text-white">{stat.value}</div>

@@ -24,7 +24,8 @@ export function buildEmailHtml(
   bodyHtml: string,
   ctaText?: string | null,
   ctaUrl?: string | null,
-  unsubscribeUrl?: string
+  unsubscribeUrl?: string,
+  signature?: string
 ): string {
   let html = bodyHtml;
 
@@ -39,9 +40,16 @@ export function buildEmailHtml(
 </table>`;
   }
 
+  if (signature) {
+    html += `
+<div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;font-family:Arial,sans-serif;font-size:13px;color:#374151;">
+  ${signature}
+</div>`;
+  }
+
   if (unsubscribeUrl) {
     html += `
-<div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;text-align:center;font-size:11px;color:#9ca3af;font-family:Arial,sans-serif;">
+<div style="margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;text-align:center;font-size:11px;color:#9ca3af;font-family:Arial,sans-serif;">
   <p style="margin:0;">Don't want to receive these emails? <a href="${unsubscribeUrl}" style="color:#9ca3af;text-decoration:underline;">Unsubscribe</a></p>
 </div>`;
   }

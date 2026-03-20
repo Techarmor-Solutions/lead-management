@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { pct } from "@/lib/utils";
 import Link from "next/link";
-import { BarChart3, TrendingUp, Mail, MousePointer, MessageSquare } from "lucide-react";
+import { BarChart3, Mail, MousePointer, MessageSquare, AlertTriangle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +20,7 @@ export default async function AnalyticsPage() {
   const totalOpened = allSends.filter((s) => s.openedAt).length;
   const totalClicked = allSends.filter((s) => s.clickedAt).length;
   const totalReplied = allSends.filter((s) => s.respondedAt).length;
+  const totalBounced = allSends.filter((s) => s.bouncedAt).length;
 
   return (
     <div className="p-8">
@@ -29,12 +30,13 @@ export default async function AnalyticsPage() {
       </div>
 
       {/* Overall metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         {[
           { label: "Total Sent", value: totalSent, icon: Mail, color: "text-[#eb9447]" },
           { label: "Open Rate", value: pct(totalOpened, totalSent), icon: BarChart3, color: "text-green-400" },
           { label: "Click Rate", value: pct(totalClicked, totalSent), icon: MousePointer, color: "text-purple-400" },
           { label: "Reply Rate", value: pct(totalReplied, totalSent), icon: MessageSquare, color: "text-amber-400" },
+          { label: "Bounce Rate", value: pct(totalBounced, totalSent), icon: AlertTriangle, color: "text-red-400" },
         ].map((stat) => {
           const Icon = stat.icon;
           return (
@@ -63,6 +65,7 @@ export default async function AnalyticsPage() {
                 <th className="text-right px-5 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Open %</th>
                 <th className="text-right px-5 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Click %</th>
                 <th className="text-right px-5 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Reply %</th>
+                <th className="text-right px-5 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Bounce %</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800">
@@ -71,6 +74,7 @@ export default async function AnalyticsPage() {
                 const opened = c.sends.filter((s) => s.openedAt).length;
                 const clicked = c.sends.filter((s) => s.clickedAt).length;
                 const replied = c.sends.filter((s) => s.respondedAt).length;
+                const bounced = c.sends.filter((s) => s.bouncedAt).length;
 
                 return (
                   <tr key={c.id} className="hover:bg-zinc-800/20 transition-colors">
@@ -94,6 +98,11 @@ export default async function AnalyticsPage() {
                     <td className="px-5 py-3 text-right">
                       <span className={replied > 0 ? "text-amber-400" : "text-zinc-500"}>
                         {pct(replied, sent)}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <span className={bounced > 0 ? "text-red-400" : "text-zinc-500"}>
+                        {pct(bounced, sent)}
                       </span>
                     </td>
                   </tr>

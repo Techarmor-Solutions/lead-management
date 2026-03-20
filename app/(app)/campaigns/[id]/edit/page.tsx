@@ -26,14 +26,14 @@ export default async function EditTemplatePage({ params }: { params: Promise<{ i
     }),
   ]);
 
-  if (!campaign || !campaign.isTemplate) notFound();
+  if (!campaign) notFound();
 
   return (
     <div className="p-8 max-w-5xl">
       <Link href={`/campaigns/${id}`} className="flex items-center gap-1 text-sm text-zinc-500 hover:text-white mb-6 transition-colors">
-        <ArrowLeft className="w-4 h-4" /> Back to Template
+        <ArrowLeft className="w-4 h-4" /> {campaign.isTemplate ? "Back to Template" : "Back to Campaign"}
       </Link>
-      <h1 className="text-2xl font-bold text-white mb-6">Edit Template</h1>
+      <h1 className="text-2xl font-bold text-white mb-6">{campaign.isTemplate ? "Edit Template" : "Edit Campaign"}</h1>
       <CampaignBuilder
         contacts={contacts}
         agencyProfile={agencyProfile}
@@ -42,6 +42,7 @@ export default async function EditTemplatePage({ params }: { params: Promise<{ i
         initialIndustry={campaign.industry || ""}
         initialName={campaign.name}
         editId={id}
+        isTemplate={campaign.isTemplate}
       />
     </div>
   );

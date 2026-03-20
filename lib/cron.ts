@@ -16,6 +16,17 @@ export function startCronJobs() {
       }
     });
 
+    // Poll Gmail for bounces every 30 minutes
+    cron.schedule("*/30 * * * *", async () => {
+      try {
+        const { runPollBounces } = await import("./jobs");
+        const result = await runPollBounces();
+        console.log(`[cron] poll-bounces: bounced=${result.bounced}`);
+      } catch (err) {
+        console.error("[cron] poll-bounces error:", err);
+      }
+    });
+
     // Process scheduled follow-up steps every hour — runs in-process, no HTTP
     cron.schedule("0 * * * *", async () => {
       try {
