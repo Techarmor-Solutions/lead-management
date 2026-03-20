@@ -11,6 +11,12 @@ interface Step {
   delayDays: number;
   subject: string;
   body: string;
+  ctaText?: string | null;
+  ctaUrl?: string | null;
+}
+
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -75,7 +81,12 @@ export default function StepCards({ steps }: { steps: Step[] }) {
             {step.stepType === "EMAIL" ? (
               <>
                 <div className="text-xs font-medium text-zinc-400 mb-1">{step.subject}</div>
-                <div className="text-xs text-zinc-500 whitespace-pre-wrap line-clamp-3">{step.body}</div>
+                <div className="text-xs text-zinc-500 line-clamp-3">{stripHtml(step.body)}</div>
+                {step.ctaText && (
+                  <div className="mt-2">
+                    <span className="inline-block bg-[#eb9447] text-white text-xs px-3 py-1 rounded font-semibold">{step.ctaText}</span>
+                  </div>
+                )}
               </>
             ) : (
               step.body && (
@@ -143,9 +154,30 @@ export default function StepCards({ steps }: { steps: Step[] }) {
                   <div className="text-xs text-zinc-500 mb-1">
                     {selected.stepType === "EMAIL" ? "Body" : selected.stepType === "CALL" ? "Call Script" : "Notes"}
                   </div>
-                  <div className="text-sm text-zinc-200 whitespace-pre-wrap bg-zinc-800/50 rounded-lg px-3 py-3 leading-relaxed">
-                    {selected.body}
-                  </div>
+                  {selected.stepType === "EMAIL" ? (
+                    <div
+                      className="text-sm text-zinc-200 bg-zinc-800/50 rounded-lg px-3 py-3 leading-relaxed prose prose-invert prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ __html: selected.body }}
+                    />
+                  ) : (
+                    <div className="text-sm text-zinc-200 whitespace-pre-wrap bg-zinc-800/50 rounded-lg px-3 py-3 leading-relaxed">
+                      {selected.body}
+                    </div>
+                  )}
+                </div>
+              )}
+              {selected.ctaText && selected.ctaUrl && (
+                <div>
+                  <div className="text-xs text-zinc-500 mb-2">CTA Button</div>
+                  <a
+                    href={selected.ctaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block bg-[#eb9447] text-white text-sm px-5 py-2.5 rounded-lg font-semibold hover:bg-[#d4833a] transition-colors"
+                  >
+                    {selected.ctaText}
+                  </a>
+                  <div className="text-xs text-zinc-500 mt-1 truncate">{selected.ctaUrl}</div>
                 </div>
               )}
             </div>

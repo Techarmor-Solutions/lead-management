@@ -28,7 +28,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     await prisma.campaignStep.deleteMany({ where: { campaignId: id } });
     await prisma.campaignStep.createMany({
       data: data.steps.map(
-        (step: { label: string; stepType: string; delayDays: number; subject: string; body: string }, i: number) => ({
+        (step: { label: string; stepType: string; delayDays: number; subject: string; body: string; ctaText?: string; ctaUrl?: string }, i: number) => ({
           campaignId: id,
           stepNumber: i + 1,
           stepType: step.stepType || "EMAIL",
@@ -36,6 +36,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           delayDays: i === 0 ? 0 : step.delayDays,
           subject: step.subject || "",
           body: step.body || "",
+          ctaText: step.ctaText || null,
+          ctaUrl: step.ctaUrl || null,
         })
       ),
     });
