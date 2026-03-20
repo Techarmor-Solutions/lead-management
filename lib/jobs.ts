@@ -1,6 +1,6 @@
 import { prisma } from "./db";
 import { pollForReplies, sendEmail } from "./gmail";
-import { applyPersonalizationTags } from "./utils";
+import { applyPersonalizationTags, buildEmailHtml, htmlToPlainText } from "./utils";
 import { generateToken, injectTracking, extractLinks } from "./tracking";
 
 export async function runPollReplies(): Promise<{ checked: number; replied: number }> {
@@ -92,10 +92,12 @@ export async function runProcessScheduled(): Promise<{ processed: number }> {
 
       const { contact, step } = send;
       const subject = applyPersonalizationTags(step.subject, contact, contact.company, senderName);
-      const bodyText = applyPersonalizationTags(step.body, contact, contact.company, senderName);
+      const bodyHtml = applyPersonalizationTags(step.body, contact, contact.company, senderName);
+
+      const fullHtml = buildEmailHtml(bodyHtml, step.ctaText, step.ctaUrl);
 
       const openToken = generateToken();
-      const links = extractLinks(bodyText);
+      const links = extractLinks(fullHtml);
       const clickTokenMap = new Map<string, string>();
       for (const link of links) clickTokenMap.set(link, generateToken());
 
@@ -104,14 +106,10 @@ export async function runProcessScheduled(): Promise<{ processed: number }> {
         await prisma.trackingToken.create({ data: { token, sendId: send.id, type: "CLICK", url } });
       }
 
-      const htmlBody = bodyText
-        .split("\n\n")
-        .map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`)
-        .join("");
-      const trackedHtml = injectTracking(htmlBody, openToken, clickTokenMap, appUrl);
+      const trackedHtml = injectTracking(fullHtml, openToken, clickTokenMap, appUrl);
 
       try {
-        await sendEmail({ to: contact.email, subject, htmlBody: trackedHtml, textBody: bodyText });
+        await sendEmail({ to: contact.email, subject, htmlBody: trackedHtml, textBody: htmlToPlainText(fullHtml) });
         await prisma.send.update({ where: { id: send.id }, data: { status: "SENT", sentAt: new Date() } });
         processed++;
       } catch (err) {

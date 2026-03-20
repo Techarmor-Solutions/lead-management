@@ -20,13 +20,15 @@ export async function POST(req: NextRequest) {
       isTemplate: isTemplate || false,
       steps: {
         create: steps.map(
-          (step: { label: string; stepType: string; delayDays: number; subject: string; body: string }, i: number) => ({
+          (step: { label: string; stepType: string; delayDays: number; subject: string; body: string; ctaText?: string; ctaUrl?: string }, i: number) => ({
             stepNumber: i + 1,
             stepType: step.stepType || "EMAIL",
             label: step.label,
             delayDays: i === 0 ? 0 : step.delayDays,
             subject: step.subject || "",
             body: step.body || "",
+            ctaText: step.ctaText || null,
+            ctaUrl: step.ctaUrl || null,
           })
         ),
       },

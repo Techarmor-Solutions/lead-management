@@ -20,6 +20,33 @@ export function applyPersonalizationTags(
     .replace(/\{\{sender_name\}\}/g, senderName || "Caleb");
 }
 
+export function buildEmailHtml(bodyHtml: string, ctaText?: string | null, ctaUrl?: string | null): string {
+  if (!ctaText || !ctaUrl) return bodyHtml;
+
+  const button = `
+<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;">
+  <tr>
+    <td>
+      <a href="${ctaUrl}" style="background-color:#eb9447;color:#ffffff;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:bold;display:inline-block;font-family:Arial,sans-serif;font-size:14px;">${ctaText}</a>
+    </td>
+  </tr>
+</table>`;
+
+  return bodyHtml + button;
+}
+
+export function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .trim();
+}
+
 export function formatDate(date: Date | string | null): string {
   if (!date) return "—";
   return new Date(date).toLocaleDateString("en-US", {

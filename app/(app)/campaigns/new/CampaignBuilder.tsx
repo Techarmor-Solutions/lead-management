@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Sparkles, ChevronDown, ChevronUp, Mail, Linkedin, Phone, CheckSquare, MessageSquare, Copy } from "lucide-react";
 import { AgencyProfile, Contact } from "@prisma/client";
+import RichTextEditor from "@/components/RichTextEditor";
 
 type StepType = "EMAIL" | "LINKEDIN_CONNECT" | "LINKEDIN_MESSAGE" | "CALL" | "TASK";
 
@@ -24,6 +25,8 @@ interface Step {
   delayDays: number;
   subject: string;
   body: string;
+  ctaText: string;
+  ctaUrl: string;
 }
 
 interface TemplateStep {
@@ -32,6 +35,8 @@ interface TemplateStep {
   delayDays: number;
   subject: string;
   body: string;
+  ctaText?: string | null;
+  ctaUrl?: string | null;
 }
 
 interface Props {
@@ -45,10 +50,51 @@ interface Props {
 }
 
 const DEFAULT_STEPS: Step[] = [
-  { label: "Initial Outreach", stepType: "EMAIL", delayDays: 0, subject: "", body: "" },
+  { label: "Initial Outreach", stepType: "EMAIL", delayDays: 0, subject: "", body: "", ctaText: "", ctaUrl: "" },
 ];
 
 const TAGS = ["{{first_name}}", "{{company_name}}", "{{sender_name}}"];
+
+function CTAFields({ ctaText, ctaUrl, onChangeText, onChangeUrl }: {
+  ctaText: string; ctaUrl: string;
+  onChangeText: (v: string) => void; onChangeUrl: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      {!open ? (
+        <button type="button" onClick={() => setOpen(true)} className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
+          + Add button (optional)
+        </button>
+      ) : (
+        <div className="space-y-2 border border-zinc-700 rounded-lg p-3 bg-zinc-800/40">
+          <div className="flex items-center justify-between">
+            <label className="text-xs text-zinc-400 font-medium">CTA Button</label>
+            <button type="button" onClick={() => { setOpen(false); onChangeText(""); onChangeUrl(""); }} className="text-xs text-zinc-500 hover:text-red-400 transition-colors">remove</button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs text-zinc-500 mb-1">Button Text</label>
+              <input value={ctaText} onChange={(e) => onChangeText(e.target.value)} className="input w-full text-sm" placeholder="Book a Call" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-500 mb-1">Button URL</label>
+              <input value={ctaUrl} onChange={(e) => onChangeUrl(e.target.value)} className="input w-full text-sm" placeholder="https://calendly.com/..." />
+            </div>
+          </div>
+          {ctaText && ctaUrl && (
+            <div className="pt-1">
+              <a href={ctaUrl} onClick={(e) => e.preventDefault()} className="inline-block bg-[#eb9447] text-white text-xs px-4 py-2 rounded font-semibold">
+                {ctaText}
+              </a>
+              <span className="text-xs text-zinc-500 ml-2">preview</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const STEP_TYPES: { type: StepType; label: string; icon: React.ReactNode; color: string }[] = [
   { type: "EMAIL", label: "Email", icon: <Mail className="w-3.5 h-3.5" />, color: "blue" },
@@ -73,6 +119,8 @@ function toSteps(raw: TemplateStep[]): Step[] {
     delayDays: s.delayDays,
     subject: s.subject,
     body: s.body,
+    ctaText: s.ctaText || "",
+    ctaUrl: s.ctaUrl || "",
   }));
 }
 
@@ -131,7 +179,7 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
   function addStep() {
     setSteps((prev) => [
       ...prev,
-      { label: `Follow-up #${prev.length}`, stepType: "EMAIL", delayDays: prev.length * 3, subject: "", body: "" },
+      { label: `Follow-up #${prev.length}`, stepType: "EMAIL", delayDays: prev.length * 3, subject: "", body: "", ctaText: "", ctaUrl: "" },
     ]);
     setActiveStep(steps.length);
   }
@@ -139,19 +187,6 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
   function removeStep(index: number) {
     setSteps((prev) => prev.filter((_, i) => i !== index));
     setActiveStep(Math.max(0, activeStep - 1));
-  }
-
-  function insertTag(tag: string) {
-    const textarea = document.querySelector<HTMLTextAreaElement>(`#step-body-${activeStep}`);
-    if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const newBody = steps[activeStep].body.slice(0, start) + tag + steps[activeStep].body.slice(end);
-    updateStep(activeStep, "body", newBody);
-    setTimeout(() => {
-      textarea.selectionStart = textarea.selectionEnd = start + tag.length;
-      textarea.focus();
-    }, 0);
   }
 
   async function generateWithAI() {
@@ -199,7 +234,10 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
           if (step.stepType !== "EMAIL") return step;
           const ai = data.steps[emailIdx++];
           if (!ai) return step;
-          return { ...step, label: ai.label || step.label, subject: ai.subject || step.subject, body: ai.body || step.body };
+          const htmlBody = ai.body
+            ? ai.body.split("\n\n").map((p: string) => `<p>${p.replace(/\n/g, "<br>")}</p>`).join("")
+            : step.body;
+          return { ...step, label: ai.label || step.label, subject: ai.subject || step.subject, body: htmlBody };
         })
       );
     }
@@ -490,28 +528,20 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
                     />
                   </div>
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs text-zinc-500">Body</label>
-                      <div className="flex gap-1">
-                        {TAGS.map((tag) => (
-                          <button
-                            key={tag}
-                            onClick={() => insertTag(tag)}
-                            className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded transition-colors"
-                          >
-                            {tag}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <textarea
-                      id={`step-body-${activeStep}`}
+                    <label className="block text-xs text-zinc-500 mb-1">Body</label>
+                    <RichTextEditor
                       value={step.body}
-                      onChange={(e) => updateStep(activeStep, "body", e.target.value)}
-                      className="input w-full text-sm resize-none h-40"
-                      placeholder="Hi {{first_name}},&#10;&#10;..."
+                      onChange={(html) => updateStep(activeStep, "body", html)}
+                      placeholder="Hi {{first_name}},..."
+                      tags={TAGS}
                     />
                   </div>
+                  <CTAFields
+                    ctaText={step.ctaText}
+                    ctaUrl={step.ctaUrl}
+                    onChangeText={(v) => updateStep(activeStep, "ctaText", v)}
+                    onChangeUrl={(v) => updateStep(activeStep, "ctaUrl", v)}
+                  />
                 </>
               ) : (
                 <div>
@@ -519,7 +549,6 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
                     {step.stepType === "CALL" ? "Call Script / Talking Points" : "Notes / Instructions"}
                   </label>
                   <textarea
-                    id={`step-body-${activeStep}`}
                     value={step.body}
                     onChange={(e) => updateStep(activeStep, "body", e.target.value)}
                     className="input w-full text-sm resize-none h-40"

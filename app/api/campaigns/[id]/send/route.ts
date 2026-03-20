@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendEmail } from "@/lib/gmail";
-import { applyPersonalizationTags, } from "@/lib/utils";
-import { generateToken, injectTracking, extractLinks, TRACKING_PIXEL } from "@/lib/tracking";
+import { applyPersonalizationTags, buildEmailHtml, htmlToPlainText } from "@/lib/utils";
+import { generateToken, injectTracking, extractLinks } from "@/lib/tracking";
 
 export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -48,11 +48,13 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
     const { contact, step } = send;
 
     const subject = applyPersonalizationTags(step.subject, contact, contact.company, senderName);
-    const bodyText = applyPersonalizationTags(step.body, contact, contact.company, senderName);
+    const bodyHtml = applyPersonalizationTags(step.body, contact, contact.company, senderName);
+
+    const fullHtml = buildEmailHtml(bodyHtml, step.ctaText, step.ctaUrl);
 
     // Create tracking tokens
     const openToken = generateToken();
-    const links = extractLinks(bodyText);
+    const links = extractLinks(fullHtml);
     const clickTokenMap = new Map<string, string>();
 
     for (const link of links) {
@@ -69,20 +71,14 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
       });
     }
 
-    // Convert plain text to HTML
-    const htmlBody = bodyText
-      .split("\n\n")
-      .map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`)
-      .join("");
-
-    const trackedHtml = injectTracking(htmlBody, openToken, clickTokenMap, appUrl);
+    const trackedHtml = injectTracking(fullHtml, openToken, clickTokenMap, appUrl);
 
     try {
       await sendEmail({
         to: contact.email,
         subject,
         htmlBody: trackedHtml,
-        textBody: bodyText,
+        textBody: htmlToPlainText(fullHtml),
       });
 
       await prisma.send.update({

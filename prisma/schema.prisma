@@ -167,6 +167,8 @@ model CampaignStep {
   delayDays  Int      @default(0)
   subject    String   @default("")
   body       String   @default("")
+  ctaText    String?
+  ctaUrl     String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
