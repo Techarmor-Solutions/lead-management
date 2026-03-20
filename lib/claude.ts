@@ -117,6 +117,90 @@ Use empty string for any field you cannot find. Include as many contacts as you 
   return empty;
 }
 
+export async function enrichCompanyLite(
+  companyName: string,
+  website: string,
+  industry: string,
+  city?: string,
+  state?: string
+): Promise<EnrichmentResult> {
+  const empty: EnrichmentResult = {
+    contacts: [],
+    companyLinkedIn: "",
+    companySummary: "",
+    recentNews: "",
+    techStack: "",
+  };
+
+  const location = [city, state].filter(Boolean).join(", ");
+
+  const messages: Anthropic.MessageParam[] = [
+    {
+      role: "user",
+      content: `You are a B2B contact finder. Use ONE web search to find the owner or decision-maker at this business.
+
+Business: "${companyName}"
+${location ? `Location: ${location}` : ""}
+${website ? `Website: ${website}` : ""}
+Industry: ${industry || "unknown"}
+
+Search for: "${companyName} ${location} owner"
+
+Find ONLY: first name, last name, job title, and email address of the owner or primary decision-maker.
+
+Respond with ONLY a raw JSON object (no markdown, no explanation):
+{"contacts":[{"firstName":"","lastName":"","title":"","email":"","phone":"","linkedin":""}],"companyLinkedIn":"","companySummary":"","recentNews":"","techStack":""}
+
+Use empty string for any field you cannot find.`,
+    },
+  ];
+
+  for (let i = 0; i < 2; i++) {
+    const response = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 512,
+      tools: [{ type: "web_search_20250305", name: "web_search" } as never],
+      messages,
+    });
+
+    if (response.stop_reason === "end_turn") {
+      const textBlock = response.content.find((c) => c.type === "text");
+      if (!textBlock || textBlock.type !== "text") return empty;
+      const text = textBlock.text.trim();
+
+      const fenceMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+      const rawMatch = text.match(/\{[\s\S]*\}/);
+      const jsonStr = fenceMatch?.[1] ?? rawMatch?.[0];
+
+      if (!jsonStr) return empty;
+      try {
+        return JSON.parse(jsonStr);
+      } catch {
+        return empty;
+      }
+    }
+
+    if (response.stop_reason === "tool_use") {
+      messages.push({ role: "assistant", content: response.content });
+      const toolResults = response.content
+        .filter((c): c is Anthropic.ToolUseBlock => c.type === "tool_use")
+        .map((c) => ({
+          type: "tool_result" as const,
+          tool_use_id: c.id,
+          content: "",
+        }));
+      if (toolResults.length > 0) {
+        messages.push({ role: "user", content: toolResults });
+      }
+      continue;
+    }
+
+    break;
+  }
+
+  return empty;
+}
+
 export async function generateCampaignCopy(params: {
   agencyProfile: {
     name: string;

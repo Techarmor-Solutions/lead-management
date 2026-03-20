@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Building2, Users, Globe, MapPin, Star, ChevronLeft, ChevronRight, Plus, X, Upload, Trash2, Pencil, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Building2, Users, Globe, MapPin, Star, ChevronLeft, ChevronRight, Plus, X, Upload, Trash2, Pencil, Check, Zap } from "lucide-react";
 import CsvImportModal from "@/components/CsvImportModal";
 
 interface Company {
@@ -60,6 +60,17 @@ export default function CompanyList({
   const [categoryDraft, setCategoryDraft] = useState("");
   const totalPages = Math.ceil(total / limit);
 
+  // Bulk enrichment state
+  const [showBulkEnrich, setShowBulkEnrich] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{
+    current: number;
+    total: number;
+    hunterHits: number;
+    aiHits: number;
+    done: boolean;
+  } | null>(null);
+  const [bulkCancelled, setBulkCancelled] = useState(false);
+
   async function saveCategory(e: React.MouseEvent | React.KeyboardEvent, companyId: string) {
     e.preventDefault();
     e.stopPropagation();
@@ -114,6 +125,28 @@ export default function CompanyList({
     router.refresh();
   }
 
+  async function runBulkEnrich(unenrichedIds: string[]) {
+    setBulkCancelled(false);
+    setBulkProgress({ current: 0, total: unenrichedIds.length, hunterHits: 0, aiHits: 0, done: false });
+
+    // Send all IDs at once — server handles sequencing
+    const res = await fetch("/api/companies/bulk-enrich", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ companyIds: unenrichedIds }),
+    });
+    const data = await res.json();
+
+    setBulkProgress({
+      current: data.processed + data.skipped,
+      total: unenrichedIds.length,
+      hunterHits: data.hunterHits,
+      aiHits: data.aiHits,
+      done: true,
+    });
+    router.refresh();
+  }
+
   return (
     <div>
       <div className="flex gap-2 mb-4 flex-wrap">
@@ -160,6 +193,13 @@ export default function CompanyList({
         >
           <Upload className="w-4 h-4" />
           Import CSV
+        </button>
+        <button
+          onClick={() => { setShowBulkEnrich(true); setBulkProgress(null); }}
+          className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+        >
+          <Zap className="w-4 h-4" />
+          Bulk Enrich (Lite)
         </button>
         <button
           onClick={() => setShowModal(true)}
@@ -290,6 +330,17 @@ export default function CompanyList({
 
       {showImport && <CsvImportModal type="companies" onClose={() => setShowImport(false)} />}
 
+      {/* Bulk Enrich Modal */}
+      {showBulkEnrich && (
+        <BulkEnrichModal
+          onClose={() => { setShowBulkEnrich(false); setBulkProgress(null); }}
+          progress={bulkProgress}
+          onStart={runBulkEnrich}
+          cancelled={bulkCancelled}
+          onCancel={() => setBulkCancelled(true)}
+        />
+      )}
+
       {/* Add Company Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
@@ -400,6 +451,112 @@ export default function CompanyList({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+interface BulkEnrichModalProps {
+  onClose: () => void;
+  progress: { current: number; total: number; hunterHits: number; aiHits: number; done: boolean } | null;
+  onStart: (ids: string[]) => void;
+  cancelled: boolean;
+  onCancel: () => void;
+}
+
+function BulkEnrichModal({ onClose, progress, onStart, cancelled, onCancel }: BulkEnrichModalProps) {
+  const [loading, setLoading] = useState(true);
+  const [unenrichedIds, setUnenrichedIds] = useState<string[]>([]);
+
+  // Fetch unenriched companies on mount
+  useEffect(() => {
+    fetch("/api/companies/unenriched")
+      .then((r) => r.json())
+      .then((data) => {
+        setUnenrichedIds(data.ids ?? []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-[#1a1a1a] border border-zinc-700 rounded-xl p-6 w-full max-w-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-[#eb9447]" />
+            <h3 className="font-semibold text-white">Bulk Enrich (Lite)</h3>
+          </div>
+          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {loading ? (
+          <p className="text-sm text-zinc-400">Checking companies...</p>
+        ) : progress ? (
+          <div className="space-y-3">
+            {!progress.done ? (
+              <>
+                <p className="text-sm text-zinc-400">Enriching companies... this may take a few minutes.</p>
+                <div className="w-full bg-zinc-800 rounded-full h-2">
+                  <div
+                    className="bg-[#eb9447] h-2 rounded-full transition-all"
+                    style={{ width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%` }}
+                  />
+                </div>
+                <p className="text-xs text-zinc-500">Processing {progress.total} companies...</p>
+                {!cancelled && (
+                  <button onClick={onCancel} className="text-xs text-zinc-500 hover:text-white transition-colors">
+                    Cancel
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="text-sm text-zinc-300 space-y-1">
+                  <p>Done! Processed <span className="text-white font-medium">{progress.current}</span> companies.</p>
+                  <p className="text-xs text-zinc-500">
+                    Hunter hits: <span className="text-green-400">{progress.hunterHits}</span>
+                    {" · "}
+                    AI hits: <span className="text-blue-400">{progress.aiHits}</span>
+                  </p>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="w-full bg-[#eb9447] hover:bg-[#d4833a] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Close
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-zinc-400">
+              {unenrichedIds.length === 0
+                ? "All companies are already enriched."
+                : <>
+                    <span className="text-white font-medium">{unenrichedIds.length}</span> companies need enrichment.
+                    Uses Hunter (free) + Haiku AI (~$0.03–0.05/company).
+                  </>
+              }
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={onClose} className="px-3 py-2 text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={() => onStart(unenrichedIds)}
+                disabled={unenrichedIds.length === 0}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm bg-[#eb9447] hover:bg-[#d4833a] disabled:opacity-50 text-white rounded-lg font-medium transition-colors"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                Start Enrichment
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

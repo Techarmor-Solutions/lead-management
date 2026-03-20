@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, Star, Globe, Phone, MapPin, Plus, Save, SlidersHorizontal } from "lucide-react";
+import { Search, Star, Globe, Phone, MapPin, Plus, Save, SlidersHorizontal, CheckSquare, Square } from "lucide-react";
 
 interface PlaceResult {
   placeId: string;
@@ -37,6 +37,8 @@ export default function LeadSearch() {
   const [saved, setSaved] = useState<Set<string>>(new Set());
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveName, setSaveName] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   // Client-side filters applied to API results
   const filteredResults = useMemo(() => {
@@ -102,6 +104,33 @@ export default function LeadSearch() {
     });
     setShowSaveModal(false);
     setSaveName("");
+  }
+
+  function toggleSelect(placeId: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(placeId)) next.delete(placeId);
+      else next.add(placeId);
+      return next;
+    });
+  }
+
+  function selectAll() {
+    setSelected(new Set(filteredResults.map((p) => p.placeId)));
+  }
+
+  function deselectAll() {
+    setSelected(new Set());
+  }
+
+  async function saveSelected() {
+    setBulkSaving(true);
+    const toSave = filteredResults.filter((p) => selected.has(p.placeId) && !saved.has(p.placeId));
+    for (const place of toSave) {
+      await saveCompany(place);
+    }
+    setSelected(new Set());
+    setBulkSaving(false);
   }
 
   const hasActiveFilters = minRating || maxRating || websiteFilter !== "any" || phoneFilter !== "any" || minReviews;
@@ -233,62 +262,108 @@ export default function LeadSearch() {
       {/* Results */}
       {allResults.length > 0 && (
         <div className="space-y-2">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
             <span className="text-sm text-zinc-500">
               {filteredResults.length} result{filteredResults.length !== 1 ? "s" : ""}
               {filteredResults.length !== allResults.length && ` (filtered from ${allResults.length})`}
             </span>
-            {filteredResults.length > 1 && (
-              <button
-                onClick={saveAllFiltered}
-                className="text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                Save all ({filteredResults.filter((p) => !saved.has(p.placeId)).length} unsaved)
-              </button>
-            )}
-          </div>
-
-          {filteredResults.map((place) => (
-            <div key={place.placeId} className="bg-[#1a1a1a] border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-white mb-1">{place.name}</div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
-                    {place.address && (
-                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{place.address}</span>
-                    )}
-                    {place.phone && (
-                      <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{place.phone}</span>
-                    )}
-                    {place.website ? (
-                      <a href={place.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[#eb9447] hover:text-[#f0a86a]">
-                        <Globe className="w-3 h-3" />Website
-                      </a>
-                    ) : (
-                      <span className="flex items-center gap-1 text-zinc-700"><Globe className="w-3 h-3" />No website</span>
-                    )}
-                    {place.rating && (
-                      <span className="flex items-center gap-1 text-amber-400">
-                        <Star className="w-3 h-3" />{place.rating} ({place.totalRatings})
-                      </span>
-                    )}
-                  </div>
-                </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {filteredResults.length > 1 && (
                 <button
-                  onClick={() => saveCompany(place)}
-                  disabled={saving.has(place.placeId) || saved.has(place.placeId)}
-                  className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors flex-shrink-0 ${
-                    saved.has(place.placeId)
-                      ? "bg-green-900/40 text-green-400 cursor-default"
-                      : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-50"
-                  }`}
+                  onClick={selected.size === filteredResults.length ? deselectAll : selectAll}
+                  className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  {selected.size === filteredResults.length ? (
+                    <><CheckSquare className="w-3.5 h-3.5" />Deselect All</>
+                  ) : (
+                    <><Square className="w-3.5 h-3.5" />Select All</>
+                  )}
+                </button>
+              )}
+              {selected.size > 0 && (
+                <button
+                  onClick={saveSelected}
+                  disabled={bulkSaving}
+                  className="flex items-center gap-1.5 text-xs bg-[#eb9447] hover:bg-[#d4833a] disabled:opacity-50 text-white px-3 py-1.5 rounded-lg transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  {saved.has(place.placeId) ? "Saved" : saving.has(place.placeId) ? "Saving..." : "Save"}
+                  {bulkSaving ? "Saving..." : `Save Selected (${selected.size})`}
                 </button>
-              </div>
+              )}
+              {filteredResults.length > 1 && (
+                <button
+                  onClick={saveAllFiltered}
+                  className="text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  Save all ({filteredResults.filter((p) => !saved.has(p.placeId)).length} unsaved)
+                </button>
+              )}
             </div>
-          ))}
+          </div>
+
+          {filteredResults.map((place) => {
+            const isSelected = selected.has(place.placeId);
+            const isSaved = saved.has(place.placeId);
+            return (
+              <div
+                key={place.placeId}
+                className={`bg-[#1a1a1a] border rounded-xl p-4 transition-colors ${
+                  isSelected ? "border-[#eb9447]/60 bg-[#eb9447]/5" : "border-zinc-800 hover:border-zinc-700"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  {/* Checkbox */}
+                  <button
+                    onClick={() => toggleSelect(place.placeId)}
+                    className="flex-shrink-0 mt-0.5 text-zinc-500 hover:text-[#eb9447] transition-colors"
+                    aria-label={isSelected ? "Deselect" : "Select"}
+                  >
+                    {isSelected ? (
+                      <CheckSquare className="w-4 h-4 text-[#eb9447]" />
+                    ) : (
+                      <Square className="w-4 h-4" />
+                    )}
+                  </button>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-white mb-1">{place.name}</div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
+                      {place.address && (
+                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{place.address}</span>
+                      )}
+                      {place.phone && (
+                        <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{place.phone}</span>
+                      )}
+                      {place.website ? (
+                        <a href={place.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[#eb9447] hover:text-[#f0a86a]">
+                          <Globe className="w-3 h-3" />Website
+                        </a>
+                      ) : (
+                        <span className="flex items-center gap-1 text-zinc-700"><Globe className="w-3 h-3" />No website</span>
+                      )}
+                      {place.rating && (
+                        <span className="flex items-center gap-1 text-amber-400">
+                          <Star className="w-3 h-3" />{place.rating} ({place.totalRatings})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => saveCompany(place)}
+                    disabled={saving.has(place.placeId) || isSaved}
+                    className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors flex-shrink-0 ${
+                      isSaved
+                        ? "bg-green-900/40 text-green-400 cursor-default"
+                        : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-50"
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    {isSaved ? "Saved" : saving.has(place.placeId) ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
 
           {nextPageToken && (
             <button

@@ -103,4 +103,47 @@ export async function verifyEmail(email: string): Promise<HunterVerifyResult | n
   };
 }
 
+const GENERIC_PREFIXES = new Set([
+  "info", "contact", "hello", "support", "admin", "sales", "team",
+  "help", "noreply", "no-reply", "mail", "office", "enquiries",
+]);
+
+export interface DomainSearchContact {
+  firstName: string;
+  lastName: string;
+  email: string;
+  title: string;
+}
+
+export async function domainSearch(domain: string): Promise<DomainSearchContact[]> {
+  if (!API_KEY) return [];
+
+  const url = new URL(`${HUNTER_API_BASE}/domain-search`);
+  url.searchParams.set("domain", domain);
+  url.searchParams.set("api_key", API_KEY);
+  url.searchParams.set("type", "personal");
+
+  const res = await fetch(url.toString());
+  if (!res.ok) return [];
+
+  const json = await res.json();
+  const emails: Record<string, unknown>[] = json?.data?.emails ?? [];
+
+  return emails
+    .filter((e) => {
+      const confidence = (e.confidence as number) ?? 0;
+      if (confidence < 70) return false;
+      const prefix = ((e.value as string) ?? "").split("@")[0].toLowerCase();
+      if (GENERIC_PREFIXES.has(prefix)) return false;
+      if (!e.first_name && !e.last_name) return false;
+      return true;
+    })
+    .map((e) => ({
+      firstName: (e.first_name as string) ?? "",
+      lastName: (e.last_name as string) ?? "",
+      email: (e.value as string) ?? "",
+      title: (e.position as string) ?? "",
+    }));
+}
+
 export { isUsable };
