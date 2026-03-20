@@ -92,8 +92,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Due Tasks */}
-      {dueTasks.length > 0 && (
-        <div className="bg-[#1a1a1a] border border-[#eb9447]/30 rounded-xl mb-6">
+      <div className="bg-[#1a1a1a] border border-[#eb9447]/30 rounded-xl mb-6">
           <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
             <h2 className="font-semibold text-white flex items-center gap-2">
               <CheckSquare className="w-4 h-4 text-[#eb9447]" />
@@ -102,30 +101,33 @@ export default async function DashboardPage() {
             </h2>
             <Link href="/tasks" className="text-sm text-[#eb9447] hover:text-[#f0a86a]">View all →</Link>
           </div>
-          <div className="divide-y divide-zinc-800">
-            {dueTasks.map((task) => {
-              const icons: Record<string, React.ReactNode> = {
-                CALL: <Phone className="w-3.5 h-3.5 text-green-400" />,
-                LINKEDIN_CONNECT: <Linkedin className="w-3.5 h-3.5 text-sky-400" />,
-                LINKEDIN_MESSAGE: <MessageSquare className="w-3.5 h-3.5 text-sky-400" />,
-                TASK: <CheckSquare className="w-3.5 h-3.5 text-amber-400" />,
-              };
-              const contactName = [task.contact.firstName, task.contact.lastName].filter(Boolean).join(" ") || task.contact.email;
-              return (
-                <Link key={task.id} href="/tasks" className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-800/30 transition-colors">
-                  <div className="flex-shrink-0">{icons[task.step.stepType]}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-white truncate">{contactName} — {task.contact.company.name}</div>
-                    <div className="text-xs text-zinc-500 truncate">{task.step.label} · {task.campaign.name}</div>
-                  </div>
-                  {task.isOverdue && <span className="text-xs text-red-400 flex-shrink-0">Overdue</span>}
-                  {task.isDueToday && !task.isOverdue && <span className="text-xs text-[#eb9447] flex-shrink-0">Today</span>}
-                </Link>
-              );
-            })}
-          </div>
+          {dueTasks.length === 0 ? (
+            <div className="px-5 py-8 text-center text-zinc-500 text-sm">No tasks due today</div>
+          ) : (
+            <div className="divide-y divide-zinc-800">
+              {dueTasks.map((task) => {
+                const icons: Record<string, React.ReactNode> = {
+                  CALL: <Phone className="w-3.5 h-3.5 text-green-400" />,
+                  LINKEDIN_CONNECT: <Linkedin className="w-3.5 h-3.5 text-sky-400" />,
+                  LINKEDIN_MESSAGE: <MessageSquare className="w-3.5 h-3.5 text-sky-400" />,
+                  TASK: <CheckSquare className="w-3.5 h-3.5 text-amber-400" />,
+                };
+                const contactName = [task.contact.firstName, task.contact.lastName].filter(Boolean).join(" ") || task.contact.email;
+                return (
+                  <Link key={task.id} href="/tasks" className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-800/30 transition-colors">
+                    <div className="flex-shrink-0">{icons[task.step.stepType]}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-white truncate">{contactName} — {task.contact.company.name}</div>
+                      <div className="text-xs text-zinc-500 truncate">{task.step.label} · {task.campaign.name}</div>
+                    </div>
+                    {task.isOverdue && <span className="text-xs text-red-400 flex-shrink-0">Overdue</span>}
+                    {task.isDueToday && !task.isOverdue && <span className="text-xs text-[#eb9447] flex-shrink-0">Today</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
 
       {/* Recent Campaigns */}
       <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl">
