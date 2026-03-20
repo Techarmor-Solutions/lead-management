@@ -3,6 +3,7 @@
 import { Contact } from "@prisma/client";
 import { Mail, Phone, Linkedin, User, Search, CheckCircle } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
+import Link from "next/link";
 import { useState } from "react";
 
 interface Props {
@@ -39,17 +40,17 @@ export default function ContactCard({ contact }: Props) {
   return (
     <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl p-4">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
+        <Link href={`/contacts/${contact.id}`} className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity">
           <div className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0">
             <User className="w-4 h-4 text-zinc-500" />
           </div>
           <div className="min-w-0">
-            <div className="font-medium text-white">
+            <div className="font-medium text-white hover:text-[#eb9447] transition-colors">
               {[contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Unknown"}
             </div>
             {contact.title && <div className="text-xs text-zinc-500">{contact.title}</div>}
           </div>
-        </div>
+        </Link>
         <StatusBadge status={contact.status} />
       </div>
 
