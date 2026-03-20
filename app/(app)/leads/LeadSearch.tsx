@@ -64,12 +64,29 @@ export default function LeadSearch() {
     const res = await fetch(`/api/leads/search?${params}`);
     const data = await res.json();
 
+    const newResults: PlaceResult[] = data.results ?? [];
+
     if (pageToken) {
-      setAllResults((prev) => [...prev, ...data.results]);
+      setAllResults((prev) => [...prev, ...newResults]);
     } else {
-      setAllResults(data.results);
+      setAllResults(newResults);
     }
     setNextPageToken(data.nextPageToken);
+
+    // Check which results are already saved in the DB
+    const placeIds = newResults.map((r) => r.placeId);
+    if (placeIds.length > 0) {
+      const checkRes = await fetch("/api/companies/check-saved", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ placeIds }),
+      });
+      const { savedIds } = await checkRes.json();
+      if (savedIds.length > 0) {
+        setSaved((prev) => new Set([...prev, ...savedIds]));
+      }
+    }
+
     setLoading(false);
   }
 
@@ -307,8 +324,12 @@ export default function LeadSearch() {
             return (
               <div
                 key={place.placeId}
-                className={`bg-[#1a1a1a] border rounded-xl p-4 transition-colors ${
-                  isSelected ? "border-[#eb9447]/60 bg-[#eb9447]/5" : "border-zinc-800 hover:border-zinc-700"
+                className={`border rounded-xl p-4 transition-colors ${
+                  isSaved
+                    ? "bg-zinc-900/40 border-zinc-800 opacity-60"
+                    : isSelected
+                    ? "bg-[#eb9447]/5 border-[#eb9447]/60"
+                    : "bg-[#1a1a1a] border-zinc-800 hover:border-zinc-700"
                 }`}
               >
                 <div className="flex items-start gap-3">
