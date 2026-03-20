@@ -59,7 +59,7 @@ function CTAFields({ ctaText, ctaUrl, onChangeText, onChangeUrl }: {
   ctaText: string; ctaUrl: string;
   onChangeText: (v: string) => void; onChangeUrl: (v: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(Boolean(ctaText));
   return (
     <div>
       {!open ? (
@@ -537,6 +537,7 @@ export default function CampaignBuilder({ contacts, agencyProfile, lists, initia
                     />
                   </div>
                   <CTAFields
+                    key={activeStep}
                     ctaText={step.ctaText}
                     ctaUrl={step.ctaUrl}
                     onChangeText={(v) => updateStep(activeStep, "ctaText", v)}

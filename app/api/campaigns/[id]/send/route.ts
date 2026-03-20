@@ -50,7 +50,8 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
     const subject = applyPersonalizationTags(step.subject, contact, contact.company, senderName);
     const bodyHtml = applyPersonalizationTags(step.body, contact, contact.company, senderName);
 
-    const fullHtml = buildEmailHtml(bodyHtml, step.ctaText, step.ctaUrl);
+    const unsubscribeUrl = `${appUrl}/api/unsubscribe?cid=${contact.id}`;
+    const fullHtml = buildEmailHtml(bodyHtml, step.ctaText, step.ctaUrl, unsubscribeUrl);
 
     // Create tracking tokens
     const openToken = generateToken();

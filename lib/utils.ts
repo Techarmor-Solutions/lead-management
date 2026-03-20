@@ -20,10 +20,16 @@ export function applyPersonalizationTags(
     .replace(/\{\{sender_name\}\}/g, senderName || "Caleb");
 }
 
-export function buildEmailHtml(bodyHtml: string, ctaText?: string | null, ctaUrl?: string | null): string {
-  if (!ctaText || !ctaUrl) return bodyHtml;
+export function buildEmailHtml(
+  bodyHtml: string,
+  ctaText?: string | null,
+  ctaUrl?: string | null,
+  unsubscribeUrl?: string
+): string {
+  let html = bodyHtml;
 
-  const button = `
+  if (ctaText && ctaUrl) {
+    html += `
 <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;">
   <tr>
     <td>
@@ -31,8 +37,16 @@ export function buildEmailHtml(bodyHtml: string, ctaText?: string | null, ctaUrl
     </td>
   </tr>
 </table>`;
+  }
 
-  return bodyHtml + button;
+  if (unsubscribeUrl) {
+    html += `
+<div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;text-align:center;font-size:11px;color:#9ca3af;font-family:Arial,sans-serif;">
+  <p style="margin:0;">Don't want to receive these emails? <a href="${unsubscribeUrl}" style="color:#9ca3af;text-decoration:underline;">Unsubscribe</a></p>
+</div>`;
+  }
+
+  return html;
 }
 
 export function htmlToPlainText(html: string): string {

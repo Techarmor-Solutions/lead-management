@@ -94,7 +94,8 @@ export async function runProcessScheduled(): Promise<{ processed: number }> {
       const subject = applyPersonalizationTags(step.subject, contact, contact.company, senderName);
       const bodyHtml = applyPersonalizationTags(step.body, contact, contact.company, senderName);
 
-      const fullHtml = buildEmailHtml(bodyHtml, step.ctaText, step.ctaUrl);
+      const unsubscribeUrl = `${appUrl}/api/unsubscribe?cid=${contact.id}`;
+      const fullHtml = buildEmailHtml(bodyHtml, step.ctaText, step.ctaUrl, unsubscribeUrl);
 
       const openToken = generateToken();
       const links = extractLinks(fullHtml);
