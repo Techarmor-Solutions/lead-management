@@ -50,9 +50,10 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
   });
 
   // Fire time for step index i: campaign.sentAt + cumulativeDelays[i] days
+  const campaignSentAt = campaign.sentAt;
   function stepFireTime(stepIdx: number): Date | null {
-    if (!campaign.sentAt) return null;
-    return new Date(campaign.sentAt.getTime() + cumulativeDelays[stepIdx] * 86400000);
+    if (!campaignSentAt) return null;
+    return new Date(campaignSentAt.getTime() + cumulativeDelays[stepIdx] * 86400000);
   }
 
   // ── Step summaries ──────────────────────────────────────────────────────
