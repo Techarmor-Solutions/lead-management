@@ -6,17 +6,22 @@ import { Pencil, Check, X } from "lucide-react";
 interface Props {
   companyId: string;
   industry: string;
+  categories: string[];
 }
 
-export default function CategoryEditor({ companyId, industry: initial }: Props) {
+export default function CategoryEditor({ companyId, industry: initial, categories }: Props) {
   const [industry, setIndustry] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(initial);
   const [saving, setSaving] = useState(false);
+  const selectRef = useRef<HTMLSelectElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (editing) inputRef.current?.focus();
+    if (editing) {
+      selectRef.current?.focus();
+      inputRef.current?.focus();
+    }
   }, [editing]);
 
   function startEdit() {
@@ -29,36 +34,53 @@ export default function CategoryEditor({ companyId, industry: initial }: Props) 
     setDraft(industry);
   }
 
-  async function save() {
+  async function save(value?: string) {
+    const val = (value ?? draft).trim();
     setSaving(true);
     await fetch(`/api/companies/${companyId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ industry: draft.trim() }),
+      body: JSON.stringify({ industry: val }),
     });
-    setIndustry(draft.trim());
+    setIndustry(val);
     setSaving(false);
     setEditing(false);
-  }
-
-  function handleKey(e: React.KeyboardEvent) {
-    if (e.key === "Enter") save();
-    if (e.key === "Escape") cancel();
   }
 
   if (editing) {
     return (
       <div className="flex items-center gap-1.5">
-        <input
-          ref={inputRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={handleKey}
-          className="text-xs bg-zinc-800 border border-zinc-600 text-white rounded px-2 py-1 w-40 outline-none focus:border-[#eb9447]"
-          placeholder="e.g. consumer services"
-        />
+        {categories.length > 0 ? (
+          <select
+            ref={selectRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") save();
+              if (e.key === "Escape") cancel();
+            }}
+            className="text-xs bg-zinc-800 border border-zinc-600 text-white rounded px-2 py-1 outline-none focus:border-[#eb9447]"
+          >
+            <option value="">No category</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        ) : (
+          <input
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") save();
+              if (e.key === "Escape") cancel();
+            }}
+            className="text-xs bg-zinc-800 border border-zinc-600 text-white rounded px-2 py-1 w-40 outline-none focus:border-[#eb9447]"
+            placeholder="e.g. consumer services"
+          />
+        )}
         <button
-          onClick={save}
+          onClick={() => save()}
           disabled={saving}
           className="p-1 text-green-400 hover:bg-green-400/10 rounded transition-colors disabled:opacity-50"
         >

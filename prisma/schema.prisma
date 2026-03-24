@@ -16,6 +16,7 @@ model AgencyProfile {
   painPoints       String[]
   targetGeography  String[]
   additionalNotes  String   @default("")
+  categories       String[] @default([])
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

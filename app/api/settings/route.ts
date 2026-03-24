@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
     painPoints: data.painPoints || [],
     targetGeography: data.targetGeography || [],
     additionalNotes: data.additionalNotes || "",
+    categories: data.categories || [],
   };
 
   const profile = existing

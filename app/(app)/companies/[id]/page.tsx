@@ -12,23 +12,27 @@ export const dynamic = "force-dynamic";
 
 export default async function CompanyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const company = await prisma.company.findUnique({
-    where: { id },
-    include: {
-      contacts: {
-        orderBy: { createdAt: "desc" },
-        include: {
-          deals: {
-            include: {
-              deal: { include: { column: true } },
+  const [company, profile] = await Promise.all([
+    prisma.company.findUnique({
+      where: { id },
+      include: {
+        contacts: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            deals: {
+              include: {
+                deal: { include: { column: true } },
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+    prisma.agencyProfile.findFirst({ select: { categories: true } }),
+  ]);
 
   if (!company) notFound();
+  const categories = profile?.categories || [];
 
   // Collect unique deals across all contacts
   type DealEntry = { deal: (typeof company.contacts)[0]["deals"][0]["deal"]; contactNames: string[] };
@@ -60,7 +64,7 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-2xl font-bold text-white">{company.name}</h1>
-            <CategoryEditor companyId={id} industry={company.industry || ""} />
+            <CategoryEditor companyId={id} industry={company.industry || ""} categories={categories} />
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-zinc-500">
             {(company.city || company.state) && (

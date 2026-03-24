@@ -6,9 +6,25 @@ export const dynamic = "force-dynamic";
 export default async function ContactsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; status?: string; page?: string }>;
+  searchParams: Promise<{
+    search?: string;
+    status?: string;
+    page?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    lastContactedFrom?: string;
+    lastContactedTo?: string;
+  }>;
 }) {
-  const { search = "", status = "", page = "1" } = await searchParams;
+  const {
+    search = "",
+    status = "",
+    page = "1",
+    dateFrom = "",
+    dateTo = "",
+    lastContactedFrom = "",
+    lastContactedTo = "",
+  } = await searchParams;
   const pageNum = parseInt(page);
   const limit = 25;
 
@@ -22,6 +38,24 @@ export default async function ContactsPage({
     ];
   }
   if (status) where.status = status;
+
+  if (dateFrom || dateTo) {
+    where.createdAt = {
+      ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+      ...(dateTo ? { lte: new Date(dateTo + "T23:59:59") } : {}),
+    };
+  }
+
+  if (lastContactedFrom || lastContactedTo) {
+    where.sends = {
+      some: {
+        sentAt: {
+          ...(lastContactedFrom ? { gte: new Date(lastContactedFrom) } : { not: null }),
+          ...(lastContactedTo ? { lte: new Date(lastContactedTo + "T23:59:59") } : {}),
+        },
+      },
+    };
+  }
 
   const [contacts, total] = await Promise.all([
     prisma.contact.findMany({
@@ -48,7 +82,18 @@ export default async function ContactsPage({
           Export CSV
         </a>
       </div>
-      <ContactsTable contacts={contacts} total={total} page={pageNum} limit={limit} search={search} statusFilter={status} />
+      <ContactsTable
+        contacts={contacts}
+        total={total}
+        page={pageNum}
+        limit={limit}
+        search={search}
+        statusFilter={status}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        lastContactedFrom={lastContactedFrom}
+        lastContactedTo={lastContactedTo}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { parseCsv } from "@/lib/csv";
+import { matchCategory } from "@/lib/utils";
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
@@ -10,6 +11,9 @@ export async function POST(req: NextRequest) {
   const text = await file.text();
   const rows = parseCsv(text);
   if (!rows.length) return NextResponse.json({ error: "No data rows found" }, { status: 400 });
+
+  const profile = await prisma.agencyProfile.findFirst({ select: { categories: true } });
+  const categories = profile?.categories || [];
 
   let created = 0;
   let skipped = 0;
@@ -34,7 +38,7 @@ export async function POST(req: NextRequest) {
           zip:           row["zip"]             || row["postal code"]     || row["company postal code"] || "",
           phone:         row["phone"]           || row["company phone"]   || "",
           website:       row["website"]         || "",
-          industry:      row["industry"]        || "",
+          industry:      matchCategory(row["industry"] || "", categories),
           employeeCount: row["employee count"]  || row["employees"]       || row["# employees"] || "",
           notes:         row["notes"]           || row["short description"] || "",
           source:        "csv_import",

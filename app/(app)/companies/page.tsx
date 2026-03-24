@@ -6,9 +6,16 @@ export const dynamic = "force-dynamic";
 export default async function CompaniesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; industry?: string; page?: string }>;
+  searchParams: Promise<{
+    search?: string;
+    industry?: string;
+    page?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    enriched?: string;
+  }>;
 }) {
-  const { search = "", industry = "", page = "1" } = await searchParams;
+  const { search = "", industry = "", page = "1", dateFrom = "", dateTo = "", enriched = "" } = await searchParams;
   const pageNum = parseInt(page);
   const limit = 20;
 
@@ -23,8 +30,16 @@ export default async function CompaniesPage({
   if (industry) {
     where.industry = { equals: industry, mode: "insensitive" };
   }
+  if (dateFrom || dateTo) {
+    where.createdAt = {
+      ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+      ...(dateTo ? { lte: new Date(dateTo + "T23:59:59") } : {}),
+    };
+  }
+  if (enriched === "yes") where.enrichedAt = { not: null };
+  if (enriched === "no") where.enrichedAt = null;
 
-  const [companies, total, industries] = await Promise.all([
+  const [companies, total, industries, profile] = await Promise.all([
     prisma.company.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -33,16 +48,17 @@ export default async function CompaniesPage({
       include: { _count: { select: { contacts: true } } },
     }),
     prisma.company.count({ where }),
-    // Distinct non-empty industries for the filter dropdown
     prisma.company.findMany({
       where: { industry: { not: "" } },
       select: { industry: true },
       distinct: ["industry"],
       orderBy: { industry: "asc" },
     }),
+    prisma.agencyProfile.findFirst({ select: { categories: true } }),
   ]);
 
   const industryOptions = industries.map((i) => i.industry);
+  const categories = profile?.categories || [];
 
   return (
     <div className="p-8">
@@ -66,6 +82,10 @@ export default async function CompaniesPage({
         search={search}
         industryFilter={industry}
         industryOptions={industryOptions}
+        categories={categories}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        enrichedFilter={enriched}
       />
     </div>
   );

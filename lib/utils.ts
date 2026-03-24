@@ -82,3 +82,15 @@ export function pct(numerator: number, denominator: number): string {
   if (!denominator) return "0%";
   return `${Math.round((numerator / denominator) * 100)}%`;
 }
+
+export function matchCategory(industry: string, categories: string[]): string {
+  if (!industry || categories.length === 0) return industry;
+  const normalized = industry.toLowerCase().trim();
+  const exact = categories.find((c) => c.toLowerCase().trim() === normalized);
+  if (exact) return exact;
+  const sub = categories.find((c) => {
+    const cn = c.toLowerCase().trim();
+    return cn.includes(normalized) || normalized.includes(cn);
+  });
+  return sub || industry;
+}

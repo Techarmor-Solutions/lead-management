@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { matchCategory } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
   const search = req.nextUrl.searchParams.get("search") || "";
@@ -33,6 +34,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const data = await req.json();
 
+  const profile = await prisma.agencyProfile.findFirst({ select: { categories: true } });
+  const categories = profile?.categories || [];
+  const resolvedIndustry = matchCategory(data.industry || "", categories);
+
   // Manual company (no placeId): always create a new record
   if (!data.placeId) {
     const company = await prisma.company.create({
@@ -44,7 +49,7 @@ export async function POST(req: NextRequest) {
         zip: data.zip || "",
         phone: data.phone || "",
         website: data.website || "",
-        industry: data.industry || "",
+        industry: resolvedIndustry,
         notes: data.notes || "",
         source: "manual",
       },
@@ -62,7 +67,7 @@ export async function POST(req: NextRequest) {
       state: data.state || "",
       phone: data.phone || "",
       website: data.website || "",
-      industry: data.industry || "",
+      industry: resolvedIndustry,
       rating: data.rating,
       totalRatings: data.totalRatings,
     },
@@ -73,7 +78,7 @@ export async function POST(req: NextRequest) {
       state: data.state || "",
       phone: data.phone || "",
       website: data.website || "",
-      industry: data.industry || "",
+      industry: resolvedIndustry,
       rating: data.rating,
       totalRatings: data.totalRatings,
       placeId: data.placeId,
