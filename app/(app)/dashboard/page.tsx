@@ -6,7 +6,7 @@ import { Building2, Users, Mail, TrendingUp, ArrowRight, Phone, Linkedin, CheckS
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const [companyCount, contactCount, campaigns, recentSends, scheduledTasks] = await Promise.all([
+  const [companyCount, contactCount, campaigns, recentSends, scheduledTasks, manualTasksRaw] = await Promise.all([
     prisma.company.count(),
     prisma.contact.count(),
     prisma.campaign.findMany({
@@ -31,10 +31,21 @@ export default async function DashboardPage() {
       },
       orderBy: { createdAt: "asc" },
     }),
+    prisma.manualTask.findMany({
+      where: {
+        completedAt: null,
+        dueDate: { lte: new Date(new Date().setHours(23, 59, 59, 999)) },
+      },
+      include: {
+        contact: { include: { company: { select: { name: true } } } },
+      },
+      orderBy: { dueDate: "asc" },
+      take: 5,
+    }),
   ]);
 
   const now = new Date();
-  const dueTasks = scheduledTasks
+  const dueCampaignTasks = scheduledTasks
     .map((send) => {
       const totalDelayDays = send.campaign.steps
         .filter((s) => s.stepNumber <= send.step.stepNumber)
@@ -43,6 +54,14 @@ export default async function DashboardPage() {
       return { ...send, dueAt, isOverdue: dueAt < now, isDueToday: dueAt.toDateString() === now.toDateString() };
     })
     .filter((t) => t.isOverdue || t.isDueToday)
+    .sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime());
+
+  const dueManualTasks = manualTasksRaw.map((t) => {
+    const dueAt = t.dueDate!;
+    return { ...t, dueAt, isOverdue: dueAt < now && dueAt.toDateString() !== now.toDateString(), isDueToday: dueAt.toDateString() === now.toDateString() };
+  });
+
+  const dueTasks = [...dueCampaignTasks, ...dueManualTasks]
     .sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime())
     .slice(0, 5);
 
@@ -112,13 +131,33 @@ export default async function DashboardPage() {
                   LINKEDIN_MESSAGE: <MessageSquare className="w-3.5 h-3.5 text-sky-400" />,
                   TASK: <CheckSquare className="w-3.5 h-3.5 text-amber-400" />,
                 };
-                const contactName = [task.contact.firstName, task.contact.lastName].filter(Boolean).join(" ") || task.contact.email;
+                // Campaign task
+                if ("step" in task) {
+                  const contactName = [task.contact.firstName, task.contact.lastName].filter(Boolean).join(" ") || task.contact.email;
+                  return (
+                    <Link key={task.id} href="/tasks" className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-800/30 transition-colors">
+                      <div className="flex-shrink-0">{icons[task.step.stepType]}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-white truncate">{contactName} — {task.contact.company.name}</div>
+                        <div className="text-xs text-zinc-500 truncate">{task.step.label} · {task.campaign.name}</div>
+                      </div>
+                      {task.isOverdue && <span className="text-xs text-red-400 flex-shrink-0">Overdue</span>}
+                      {task.isDueToday && !task.isOverdue && <span className="text-xs text-[#eb9447] flex-shrink-0">Today</span>}
+                    </Link>
+                  );
+                }
+                // Manual task
+                const contactName = task.contact
+                  ? [task.contact.firstName, task.contact.lastName].filter(Boolean).join(" ") || task.contact.company.name
+                  : null;
                 return (
                   <Link key={task.id} href="/tasks" className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-800/30 transition-colors">
-                    <div className="flex-shrink-0">{icons[task.step.stepType]}</div>
+                    <div className="flex-shrink-0">{icons[task.type] ?? icons.TASK}</div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm text-white truncate">{contactName} — {task.contact.company.name}</div>
-                      <div className="text-xs text-zinc-500 truncate">{task.step.label} · {task.campaign.name}</div>
+                      <div className="text-sm text-white truncate">{task.title}</div>
+                      <div className="text-xs text-zinc-500 truncate">
+                        {contactName ? `${contactName} · ${task.contact!.company.name}` : "No contact linked"}
+                      </div>
                     </div>
                     {task.isOverdue && <span className="text-xs text-red-400 flex-shrink-0">Overdue</span>}
                     {task.isDueToday && !task.isOverdue && <span className="text-xs text-[#eb9447] flex-shrink-0">Today</span>}

@@ -73,6 +73,7 @@ model Contact {
   listMemberships ContactListMember[]
   activities      Activity[]
   deals           DealContact[]
+  manualTasks     ManualTask[]
 
   @@map("contacts")
 }
@@ -316,6 +317,22 @@ model DealContact {
 
   @@unique([dealId, contactId])
   @@map("deal_contacts")
+}
+
+model ManualTask {
+  id          String    @id @default(cuid())
+  contactId   String?
+  type        String    @default("TASK")
+  title       String
+  description String    @default("")
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  contact Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@map("manual_tasks")
 }
 
 model GmailCredential {
