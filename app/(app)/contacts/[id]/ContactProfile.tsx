@@ -312,7 +312,7 @@ export default function ContactProfile({ contact }: { contact: Contact }) {
           </div>
 
           {/* Activity log */}
-          <ActivityLog contactId={contact.id} initial={contact.activities} />
+          <ActivityLog contactId={contact.id} initial={contact.activities} onStatusChange={(s) => setStatus(s as ContactStatus)} />
 
           {/* Campaigns */}
           <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl p-5">

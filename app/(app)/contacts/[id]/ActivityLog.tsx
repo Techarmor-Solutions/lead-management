@@ -47,7 +47,11 @@ function formatDate(d: Date | string) {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: date.getFullYear() !== today.getFullYear() ? "numeric" : undefined });
 }
 
-export default function ActivityLog({ contactId, initial }: { contactId: string; initial: Activity[] }) {
+export default function ActivityLog({ contactId, initial, onStatusChange }: {
+  contactId: string;
+  initial: Activity[];
+  onStatusChange?: (status: string) => void;
+}) {
   const router = useRouter();
   const [activities, setActivities] = useState<Activity[]>(initial);
   const [showForm, setShowForm] = useState(false);
@@ -70,6 +74,7 @@ export default function ActivityLog({ contactId, initial }: { contactId: string;
       body: JSON.stringify({ type, date, notes, outcome }),
     });
     const created = await res.json();
+    if (created.newStatus) onStatusChange?.(created.newStatus);
     setActivities((prev) => [created, ...prev]);
     setShowForm(false);
     setNotes("");
