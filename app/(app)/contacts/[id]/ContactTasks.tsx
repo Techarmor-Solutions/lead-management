@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckSquare, Plus, Check, Trash2, Phone, Linkedin, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
+import { CheckSquare, Plus, Check, Trash2, Phone, Linkedin, MessageSquare, ChevronDown, ChevronUp, Pencil, X } from "lucide-react";
 
 const TYPE_OPTIONS = [
   { value: "TASK", label: "Task" },
@@ -34,10 +34,15 @@ export interface ManualTask {
   createdAt: string;
 }
 
+function parseLocalDate(iso: string): Date {
+  const [year, month, day] = iso.split("T")[0].split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 function dueBadge(dueDate: string | null, completedAt: string | null) {
   if (completedAt) return null;
   if (!dueDate) return null;
-  const due = new Date(dueDate);
+  const due = parseLocalDate(dueDate);
   const now = new Date();
   const isOverdue = due < now && due.toDateString() !== now.toDateString();
   const isToday = due.toDateString() === now.toDateString();
@@ -50,14 +55,97 @@ function dueBadge(dueDate: string | null, completedAt: string | null) {
   );
 }
 
-function TaskRow({ task, onComplete, onDelete }: {
+function TaskRow({ task, onComplete, onDelete, onUpdate }: {
   task: ManualTask;
   onComplete: (id: string) => void;
   onDelete: (id: string) => void;
+  onUpdate: (id: string, updated: ManualTask) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: task.title,
+    type: task.type,
+    description: task.description,
+    dueDate: task.dueDate ? task.dueDate.split("T")[0] : "",
+  });
+
   const isCompleted = !!task.completedAt;
   const color = TYPE_COLOR[task.type] ?? TYPE_COLOR.TASK;
+
+  async function handleSave() {
+    if (!editForm.title.trim()) return;
+    setSaving(true);
+    const res = await fetch(`/api/manual-tasks/${task.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: editForm.title.trim(),
+        type: editForm.type,
+        description: editForm.description,
+        dueDate: editForm.dueDate || null,
+      }),
+    });
+    const updated = await res.json();
+    onUpdate(task.id, {
+      ...updated,
+      dueDate: updated.dueDate ?? null,
+      completedAt: updated.completedAt ?? null,
+      createdAt: updated.createdAt,
+    });
+    setSaving(false);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <div className="border border-zinc-700 rounded-lg p-3 space-y-2 bg-zinc-900/50">
+        <input
+          autoFocus
+          type="text"
+          value={editForm.title}
+          onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") setEditing(false); }}
+          className="input w-full text-sm"
+          placeholder="Task title..."
+        />
+        <div className="flex gap-2">
+          <select
+            value={editForm.type}
+            onChange={(e) => setEditForm((f) => ({ ...f, type: e.target.value }))}
+            className="input text-sm flex-1"
+          >
+            {TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <input
+            type="date"
+            value={editForm.dueDate}
+            onChange={(e) => setEditForm((f) => ({ ...f, dueDate: e.target.value }))}
+            className="input text-sm flex-1"
+          />
+        </div>
+        <textarea
+          placeholder="Notes (optional)..."
+          value={editForm.description}
+          onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+          className="input w-full text-sm resize-none h-16"
+        />
+        <div className="flex gap-2 justify-end">
+          <button onClick={() => setEditing(false)} className="text-xs text-zinc-500 hover:text-white px-3 py-1.5 rounded transition-colors">
+            <X className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || !editForm.title.trim()}
+            className="text-xs bg-[#eb9447] hover:bg-[#d4833a] text-white px-3 py-1.5 rounded transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`border rounded-lg p-3 transition-colors ${isCompleted ? "border-zinc-800 opacity-50" : "border-zinc-800 hover:border-zinc-700"}`}>
@@ -71,7 +159,7 @@ function TaskRow({ task, onComplete, onDelete }: {
             {dueBadge(task.dueDate, task.completedAt)}
             {isCompleted && (
               <span className="text-xs text-zinc-600">
-                Done {new Date(task.completedAt!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                Done {parseLocalDate(task.completedAt!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
               </span>
             )}
           </div>
@@ -92,13 +180,22 @@ function TaskRow({ task, onComplete, onDelete }: {
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {!isCompleted && (
-            <button
-              onClick={() => onComplete(task.id)}
-              title="Mark complete"
-              className="text-green-400 hover:text-green-300 transition-colors p-1 rounded hover:bg-green-900/20"
-            >
-              <Check className="w-3.5 h-3.5" />
-            </button>
+            <>
+              <button
+                onClick={() => setEditing(true)}
+                title="Edit"
+                className="text-zinc-600 hover:text-zinc-300 transition-colors p-1 rounded hover:bg-zinc-800"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => onComplete(task.id)}
+                title="Mark complete"
+                className="text-green-400 hover:text-green-300 transition-colors p-1 rounded hover:bg-green-900/20"
+              >
+                <Check className="w-3.5 h-3.5" />
+              </button>
+            </>
           )}
           <button
             onClick={() => onDelete(task.id)}
@@ -157,6 +254,10 @@ export default function ContactTasks({ contactId, initial }: { contactId: string
   async function handleDelete(id: string) {
     await fetch(`/api/manual-tasks/${id}`, { method: "DELETE" });
     setTasks((prev) => prev.filter((t) => t.id !== id));
+  }
+
+  function handleUpdate(id: string, updated: ManualTask) {
+    setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
   }
 
   return (
@@ -229,7 +330,7 @@ export default function ContactTasks({ contactId, initial }: { contactId: string
       ) : (
         <div className="space-y-2">
           {active.map((t) => (
-            <TaskRow key={t.id} task={t} onComplete={handleComplete} onDelete={handleDelete} />
+            <TaskRow key={t.id} task={t} onComplete={handleComplete} onDelete={handleDelete} onUpdate={handleUpdate} />
           ))}
         </div>
       )}
@@ -247,7 +348,7 @@ export default function ContactTasks({ contactId, initial }: { contactId: string
           {showCompleted && (
             <div className="mt-2 space-y-2">
               {done.map((t) => (
-                <TaskRow key={t.id} task={t} onComplete={handleComplete} onDelete={handleDelete} />
+                <TaskRow key={t.id} task={t} onComplete={handleComplete} onDelete={handleDelete} onUpdate={handleUpdate} />
               ))}
             </div>
           )}

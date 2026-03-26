@@ -17,7 +17,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     data: {
       contactId,
       type,
-      date: date ? new Date(date) : new Date(),
+      date: date ? new Date(date + "T12:00:00") : new Date(),
       notes: notes || "",
       outcome: outcome || "",
     },

@@ -29,8 +29,15 @@ function typeInfo(type: ActivityType) {
   return TYPES.find((t) => t.value === type) ?? TYPES[5];
 }
 
+function parseLocalDate(d: Date | string): Date {
+  // Extract the date portion and build a local date to avoid UTC-offset day shifts
+  const iso = typeof d === "string" ? d : d.toISOString();
+  const [year, month, day] = iso.split("T")[0].split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 function formatDate(d: Date | string) {
-  const date = new Date(d);
+  const date = parseLocalDate(d);
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
@@ -45,7 +52,10 @@ export default function ActivityLog({ contactId, initial }: { contactId: string;
   const [activities, setActivities] = useState<Activity[]>(initial);
   const [showForm, setShowForm] = useState(false);
   const [type, setType] = useState<ActivityType>("CALL");
-  const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
   const [outcome, setOutcome] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -64,7 +74,8 @@ export default function ActivityLog({ contactId, initial }: { contactId: string;
     setShowForm(false);
     setNotes("");
     setOutcome("");
-    setDate(new Date().toISOString().split("T")[0]);
+    const d = new Date();
+    setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
     setSaving(false);
     router.refresh();
   }

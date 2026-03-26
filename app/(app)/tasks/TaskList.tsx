@@ -1,10 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Phone, Linkedin, CheckSquare, MessageSquare, Check, ChevronDown, ChevronUp, Trash2, User } from "lucide-react";
+import { Phone, Linkedin, CheckSquare, MessageSquare, Check, ChevronDown, ChevronUp, Trash2, User, Pencil, X } from "lucide-react";
 import Link from "next/link";
 import type { TaskSend } from "./page";
+
+const TYPE_OPTIONS = [
+  { value: "TASK", label: "Task" },
+  { value: "CALL", label: "Call" },
+  { value: "LINKEDIN_CONNECT", label: "LinkedIn Connect" },
+  { value: "LINKEDIN_MESSAGE", label: "LinkedIn Message" },
+];
+
+interface ContactResult {
+  id: string;
+  firstName: string;
+  lastName: string;
+  company: { name: string };
+}
 
 export interface ManualTaskItem {
   id: string;
@@ -26,12 +40,18 @@ const TYPE_CONFIG: Record<string, { label: string; icon: React.ReactNode; color:
   TASK: { label: "Task", icon: <CheckSquare className="w-4 h-4" />, color: "text-amber-400 bg-amber-900/20 border-amber-700/30" },
 };
 
+function parseLocalDate(d: Date | string): Date {
+  const iso = typeof d === "string" ? d : d.toISOString();
+  const [year, month, day] = iso.split("T")[0].split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 function dueBadge(isOverdue: boolean, isDueToday: boolean, dueAt: Date | string) {
   if (isOverdue) return <span className="text-xs bg-red-900/30 text-red-400 border border-red-700/30 px-1.5 py-0.5 rounded">Overdue</span>;
   if (isDueToday) return <span className="text-xs bg-[#eb9447]/15 text-[#eb9447] border border-[#eb9447]/30 px-1.5 py-0.5 rounded">Due today</span>;
   return (
     <span className="text-xs bg-zinc-800 text-zinc-400 border border-zinc-700 px-1.5 py-0.5 rounded">
-      Due {new Date(dueAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+      Due {parseLocalDate(dueAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
     </span>
   );
 }
@@ -118,16 +138,155 @@ function CampaignTaskCard({ task }: { task: TaskSend }) {
 }
 
 // Manual task card
-function ManualTaskCard({ task, onComplete, onDelete }: {
+function ManualTaskCard({ task, onComplete, onDelete, onUpdate }: {
   task: ManualTaskItem;
   onComplete: (id: string) => void;
   onDelete: (id: string) => void;
+  onUpdate: (id: string, updated: ManualTaskItem) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: task.title,
+    type: task.type,
+    description: task.description,
+    dueDate: task.dueDate ? task.dueDate.split("T")[0] : "",
+  });
+  const [contactQuery, setContactQuery] = useState("");
+  const [contactResults, setContactResults] = useState<ContactResult[]>([]);
+  const [selectedContact, setSelectedContact] = useState<ContactResult | null>(
+    task.contact ? { id: task.contact.id, firstName: task.contact.firstName, lastName: task.contact.lastName, company: task.contact.company } : null
+  );
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const cfg = TYPE_CONFIG[task.type] ?? TYPE_CONFIG.TASK;
   const contactName = task.contact
     ? [task.contact.firstName, task.contact.lastName].filter(Boolean).join(" ") || "Unknown"
     : null;
+
+  function handleContactSearch(q: string) {
+    setContactQuery(q);
+    setSelectedContact(null);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (!q.trim()) { setContactResults([]); return; }
+    searchTimeout.current = setTimeout(async () => {
+      const res = await fetch(`/api/contacts/search?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      setContactResults(data.contacts ?? []);
+    }, 250);
+  }
+
+  async function handleSave() {
+    if (!editForm.title.trim()) return;
+    setSaving(true);
+    const res = await fetch(`/api/manual-tasks/${task.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: editForm.title.trim(),
+        type: editForm.type,
+        description: editForm.description,
+        dueDate: editForm.dueDate || null,
+        contactId: selectedContact?.id ?? null,
+      }),
+    });
+    const updated = await res.json();
+    const now = new Date();
+    const dueDate = updated.dueDate ?? null;
+    const isOverdue = !!dueDate && parseLocalDate(dueDate) < now && parseLocalDate(dueDate).toDateString() !== now.toDateString();
+    const isDueToday = !!dueDate && parseLocalDate(dueDate).toDateString() === now.toDateString();
+    onUpdate(task.id, { ...updated, dueDate, completedAt: updated.completedAt ?? null, createdAt: updated.createdAt, isOverdue, isDueToday });
+    setSaving(false);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <div className="bg-[#1a1a1a] border border-zinc-700 rounded-xl p-4 space-y-3">
+        <input
+          autoFocus
+          type="text"
+          value={editForm.title}
+          onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
+          onKeyDown={(e) => { if (e.key === "Escape") setEditing(false); }}
+          className="input w-full text-sm"
+          placeholder="Task title..."
+        />
+        <div className="flex gap-3">
+          <select
+            value={editForm.type}
+            onChange={(e) => setEditForm((f) => ({ ...f, type: e.target.value }))}
+            className="input text-sm flex-1"
+          >
+            {TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <input
+            type="date"
+            value={editForm.dueDate}
+            onChange={(e) => setEditForm((f) => ({ ...f, dueDate: e.target.value }))}
+            className="input text-sm flex-1"
+          />
+        </div>
+        {/* Contact */}
+        <div className="relative">
+          {selectedContact ? (
+            <div className="flex items-center justify-between bg-zinc-800 rounded-lg px-3 py-2">
+              <span className="text-sm text-white">
+                {[selectedContact.firstName, selectedContact.lastName].filter(Boolean).join(" ")}
+                <span className="text-zinc-500 ml-2 text-xs">{selectedContact.company.name}</span>
+              </span>
+              <button onClick={() => { setSelectedContact(null); setContactQuery(""); }} className="text-zinc-500 hover:text-white transition-colors">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <>
+              <input
+                type="text"
+                placeholder="Search contacts..."
+                value={contactQuery}
+                onChange={(e) => handleContactSearch(e.target.value)}
+                className="input w-full text-sm"
+              />
+              {contactResults.length > 0 && (
+                <div className="absolute z-10 mt-1 w-full bg-[#1a1a1a] border border-zinc-700 rounded-lg shadow-xl overflow-hidden">
+                  {contactResults.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => { setSelectedContact(c); setContactQuery(""); setContactResults([]); }}
+                      className="w-full text-left px-3 py-2.5 hover:bg-zinc-800 transition-colors border-b border-zinc-800 last:border-0"
+                    >
+                      <span className="text-sm text-white">{[c.firstName, c.lastName].filter(Boolean).join(" ")}</span>
+                      <span className="text-xs text-zinc-500 ml-2">{c.company.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        <textarea
+          placeholder="Notes (optional)..."
+          value={editForm.description}
+          onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+          className="input w-full text-sm resize-none h-16"
+        />
+        <div className="flex justify-end gap-2">
+          <button onClick={() => setEditing(false)} className="text-xs text-zinc-500 hover:text-white px-3 py-1.5 rounded transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || !editForm.title.trim()}
+            className="text-xs bg-[#eb9447] hover:bg-[#d4833a] text-white px-3 py-1.5 rounded transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`bg-[#1a1a1a] border rounded-xl p-4 transition-colors ${task.isOverdue ? "border-red-900/40" : task.isDueToday ? "border-[#eb9447]/30" : "border-zinc-800"}`}>
@@ -171,6 +330,12 @@ function ManualTaskCard({ task, onComplete, onDelete }: {
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
+            onClick={() => setEditing(true)}
+            className="text-zinc-600 hover:text-zinc-300 transition-colors p-2 rounded-lg hover:bg-zinc-800"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+          <button
             onClick={() => onComplete(task.id)}
             className="flex items-center gap-1.5 text-xs bg-green-900/20 hover:bg-green-900/40 border border-green-700/40 text-green-400 px-3 py-2 rounded-lg transition-colors"
           >
@@ -212,10 +377,14 @@ export default function TaskList({ tasks, manualTasks: initialManual }: { tasks:
     setManualTasks((prev) => prev.filter((t) => t.id !== id));
   }
 
+  function handleUpdate(id: string, updated: ManualTaskItem) {
+    setManualTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+  }
+
   // Merge campaign + manual into unified sorted list
   const allTasks: AnyTask[] = [
     ...tasks.map((t) => ({ kind: "campaign" as const, data: t, isOverdue: t.isOverdue, isDueToday: t.isDueToday, dueAt: t.dueAt })),
-    ...manualTasks.map((t) => ({ kind: "manual" as const, data: t, isOverdue: t.isOverdue, isDueToday: t.isDueToday, dueAt: new Date(t.dueDate ?? t.createdAt) })),
+    ...manualTasks.map((t) => ({ kind: "manual" as const, data: t, isOverdue: t.isOverdue, isDueToday: t.isDueToday, dueAt: t.dueDate ? parseLocalDate(t.dueDate) : new Date(t.createdAt) })),
   ].sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime());
 
   const overdue = allTasks.filter((t) => t.isOverdue);
@@ -224,7 +393,7 @@ export default function TaskList({ tasks, manualTasks: initialManual }: { tasks:
 
   function renderTask(t: AnyTask) {
     if (t.kind === "campaign") return <CampaignTaskCard key={t.data.id} task={t.data} />;
-    return <ManualTaskCard key={t.data.id} task={t.data} onComplete={handleComplete} onDelete={handleDelete} />;
+    return <ManualTaskCard key={t.data.id} task={t.data} onComplete={handleComplete} onDelete={handleDelete} onUpdate={handleUpdate} />;
   }
 
   return (

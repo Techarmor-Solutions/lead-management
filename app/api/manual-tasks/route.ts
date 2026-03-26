@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       title: data.title.trim(),
       type: data.type || "TASK",
       description: data.description || "",
-      dueDate: data.dueDate ? new Date(data.dueDate) : null,
+      dueDate: data.dueDate ? new Date(data.dueDate + "T12:00:00") : null,
       contactId: data.contactId || null,
     },
     include: {

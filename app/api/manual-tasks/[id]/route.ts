@@ -9,7 +9,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (data.title !== undefined) updateData.title = data.title.trim();
   if (data.type !== undefined) updateData.type = data.type;
   if (data.description !== undefined) updateData.description = data.description;
-  if (data.dueDate !== undefined) updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null;
+  if (data.dueDate !== undefined) updateData.dueDate = data.dueDate ? new Date(data.dueDate + "T12:00:00") : null;
   if (data.contactId !== undefined) updateData.contactId = data.contactId || null;
   if (data.complete === true) updateData.completedAt = new Date();
   if (data.complete === false) updateData.completedAt = null;
