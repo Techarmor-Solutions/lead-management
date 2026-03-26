@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Plus, Trash2, ArrowLeft, UserMinus, Search } from "lucide-react";
 
 interface Contact {
@@ -200,9 +201,9 @@ export default function ListDetail({ list, allContacts }: { list: List; allConta
                 return (
                   <tr key={m.id} className="border-b border-zinc-800/50 last:border-0 hover:bg-zinc-800/20 transition-colors">
                     <td className="px-4 py-3">
-                      <span className="text-sm text-white">
+                      <Link href={`/contacts/${c.id}`} className="text-sm text-white hover:text-[#eb9447] transition-colors font-medium">
                         {[c.firstName, c.lastName].filter(Boolean).join(" ") || "(no name)"}
-                      </span>
+                      </Link>
                       {c.title && <span className="text-xs text-zinc-500 ml-1">· {c.title}</span>}
                     </td>
                     <td className="px-4 py-3 text-sm text-zinc-400">{c.email}</td>

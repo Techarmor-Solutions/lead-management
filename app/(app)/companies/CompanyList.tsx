@@ -15,6 +15,7 @@ interface Company {
   website: string;
   industry: string;
   rating: number | null;
+  rank: number | null;
   enrichedAt: Date | null;
   createdAt: Date;
   _count: { contacts: number };
@@ -32,6 +33,7 @@ interface Props {
   dateFrom: string;
   dateTo: string;
   enrichedFilter: string;
+  rankFilter: string;
 }
 
 const emptyForm = {
@@ -43,6 +45,13 @@ const emptyForm = {
   state: "",
   zip: "",
   notes: "",
+};
+
+// Rank config
+const RANK_CONFIG: Record<number, { label: string; cls: string }> = {
+  3: { label: "A", cls: "bg-green-900/40 text-green-400 border border-green-700/40" },
+  2: { label: "B", cls: "bg-amber-900/40 text-amber-400 border border-amber-700/40" },
+  1: { label: "C", cls: "bg-zinc-800 text-zinc-400 border border-zinc-700" },
 };
 
 export default function CompanyList({
@@ -57,6 +66,7 @@ export default function CompanyList({
   dateFrom: initialDateFrom,
   dateTo: initialDateTo,
   enrichedFilter: initialEnriched,
+  rankFilter: initialRankFilter,
 }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState(initialSearch);
@@ -70,10 +80,17 @@ export default function CompanyList({
   const totalPages = Math.ceil(total / limit);
 
   // Advanced filters state
-  const [showFilters, setShowFilters] = useState(!!(initialDateFrom || initialDateTo || initialEnriched));
+  const [showFilters, setShowFilters] = useState(!!(initialDateFrom || initialDateTo || initialEnriched || initialRankFilter));
   const [dateFrom, setDateFrom] = useState(initialDateFrom);
   const [dateTo, setDateTo] = useState(initialDateTo);
   const [enriched, setEnriched] = useState(initialEnriched);
+  const [rankFilter, setRankFilter] = useState(initialRankFilter);
+
+  // Per-row rank saving
+  const [rankMap, setRankMap] = useState<Record<string, number | null>>(
+    Object.fromEntries(companies.map((c) => [c.id, c.rank]))
+  );
+  const [savingRank, setSavingRank] = useState<string | null>(null);
 
   // Bulk enrichment state
   const [selectionMode, setSelectionMode] = useState(false);
@@ -125,6 +142,21 @@ export default function CompanyList({
     router.refresh();
   }
 
+  async function cycleRank(e: React.MouseEvent, companyId: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    const current = rankMap[companyId];
+    const next = current === null || current === undefined ? 1 : current >= 3 ? null : current + 1;
+    setRankMap((prev) => ({ ...prev, [companyId]: next }));
+    setSavingRank(companyId);
+    await fetch(`/api/companies/${companyId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rank: next }),
+    });
+    setSavingRank(null);
+  }
+
   async function handleDelete(e: React.MouseEvent, companyId: string) {
     e.preventDefault();
     e.stopPropagation();
@@ -142,6 +174,7 @@ export default function CompanyList({
     df?: string;
     dt?: string;
     enr?: string;
+    rnk?: string;
   } = {}) {
     const params = new URLSearchParams();
     const s = opts.s ?? search;
@@ -150,12 +183,14 @@ export default function CompanyList({
     const df = opts.df ?? dateFrom;
     const dt = opts.dt ?? dateTo;
     const enr = opts.enr ?? enriched;
+    const rnk = opts.rnk ?? rankFilter;
     if (s) params.set("search", s);
     if (ind) params.set("industry", ind);
     if (pg > 1) params.set("page", String(pg));
     if (df) params.set("dateFrom", df);
     if (dt) params.set("dateTo", dt);
     if (enr) params.set("enriched", enr);
+    if (rnk) params.set("rank", rnk);
     router.push(`/companies?${params}`);
   }
 
@@ -168,12 +203,13 @@ export default function CompanyList({
     setDateFrom("");
     setDateTo("");
     setEnriched("");
+    setRankFilter("");
     setSearch("");
-    navigate({ s: "", ind: "", pg: 1, df: "", dt: "", enr: "" });
+    navigate({ s: "", ind: "", pg: 1, df: "", dt: "", enr: "", rnk: "" });
   }
 
   function applyFilters() {
-    navigate({ df: dateFrom, dt: dateTo, enr: enriched, pg: 1 });
+    navigate({ df: dateFrom, dt: dateTo, enr: enriched, rnk: rankFilter, pg: 1 });
   }
 
   function updateForm(field: keyof typeof emptyForm, value: string) {
@@ -216,7 +252,7 @@ export default function CompanyList({
     router.refresh();
   }
 
-  const hasActiveFilters = !!(search || industryFilter || dateFrom || dateTo || enriched);
+  const hasActiveFilters = !!(search || industryFilter || dateFrom || dateTo || enriched || rankFilter);
 
   return (
     <div>
@@ -306,7 +342,7 @@ export default function CompanyList({
       {/* Advanced filters panel */}
       {showFilters && (
         <div className="bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-4 mb-3">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs text-zinc-500 mb-1.5">Date Added — From</label>
               <input
@@ -337,6 +373,19 @@ export default function CompanyList({
                 <option value="no">Not enriched</option>
               </select>
             </div>
+            <div>
+              <label className="block text-xs text-zinc-500 mb-1.5">Rank</label>
+              <select
+                value={rankFilter}
+                onChange={(e) => setRankFilter(e.target.value)}
+                className="input w-full text-sm"
+              >
+                <option value="">Any rank</option>
+                <option value="3">A — Best fit</option>
+                <option value="2">B — Medium fit</option>
+                <option value="1">C — Low fit</option>
+              </select>
+            </div>
           </div>
           <div className="flex gap-2 mt-3">
             <button
@@ -346,7 +395,7 @@ export default function CompanyList({
               Apply Filters
             </button>
             <button
-              onClick={() => { setDateFrom(""); setDateTo(""); setEnriched(""); }}
+              onClick={() => { setDateFrom(""); setDateTo(""); setEnriched(""); setRankFilter(""); }}
               className="text-xs text-zinc-500 hover:text-white transition-colors px-2"
             >
               Reset
@@ -495,7 +544,20 @@ export default function CompanyList({
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 ml-4">
+                  <div className="flex items-center gap-2 ml-4">
+                    {/* Rank badge — click to cycle */}
+                    <button
+                      onClick={(e) => cycleRank(e, c.id)}
+                      disabled={savingRank === c.id}
+                      title="Click to change rank (A=best fit, B=medium, C=low, click again to clear)"
+                      className={`w-7 h-7 rounded-lg text-xs font-bold transition-all disabled:opacity-50 flex items-center justify-center ${
+                        rankMap[c.id] != null
+                          ? RANK_CONFIG[rankMap[c.id]!].cls
+                          : "bg-zinc-900 text-zinc-600 border border-zinc-800 hover:border-zinc-600"
+                      }`}
+                    >
+                      {rankMap[c.id] != null ? RANK_CONFIG[rankMap[c.id]!].label : "—"}
+                    </button>
                     <div className="flex items-center gap-1 text-xs text-zinc-500">
                       <Users className="w-3.5 h-3.5" />
                       {c._count.contacts}

@@ -65,6 +65,15 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-2xl font-bold text-white">{company.name}</h1>
             <CategoryEditor companyId={id} industry={company.industry || ""} categories={categories} />
+            {company.rank != null && (
+              <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                company.rank === 3 ? "bg-green-900/40 text-green-400" :
+                company.rank === 2 ? "bg-amber-900/40 text-amber-400" :
+                "bg-zinc-800 text-zinc-400"
+              }`}>
+                {company.rank === 3 ? "A" : company.rank === 2 ? "B" : "C"} Tier
+              </span>
+            )}
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-zinc-500">
             {(company.city || company.state) && (

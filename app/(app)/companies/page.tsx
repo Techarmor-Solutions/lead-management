@@ -13,9 +13,10 @@ export default async function CompaniesPage({
     dateFrom?: string;
     dateTo?: string;
     enriched?: string;
+    rank?: string;
   }>;
 }) {
-  const { search = "", industry = "", page = "1", dateFrom = "", dateTo = "", enriched = "" } = await searchParams;
+  const { search = "", industry = "", page = "1", dateFrom = "", dateTo = "", enriched = "", rank = "" } = await searchParams;
   const pageNum = parseInt(page);
   const limit = 20;
 
@@ -38,6 +39,7 @@ export default async function CompaniesPage({
   }
   if (enriched === "yes") where.enrichedAt = { not: null };
   if (enriched === "no") where.enrichedAt = null;
+  if (rank) where.rank = parseInt(rank);
 
   const [companies, total, industries, profile] = await Promise.all([
     prisma.company.findMany({
@@ -86,6 +88,7 @@ export default async function CompaniesPage({
         dateFrom={dateFrom}
         dateTo={dateTo}
         enrichedFilter={enriched}
+        rankFilter={rank}
       />
     </div>
   );
