@@ -9,8 +9,12 @@ export async function POST(req: NextRequest) {
 
   const companies = await prisma.company.findMany({
     where: { placeId: { in: placeIds } },
-    select: { placeId: true },
+    select: { id: true, placeId: true },
   });
 
-  return NextResponse.json({ savedIds: companies.map((c) => c.placeId) });
+  return NextResponse.json({
+    savedIds: companies.map((c) => c.placeId),
+    // placeId → DB id map so the UI can add pre-saved companies to lists
+    idMap: Object.fromEntries(companies.map((c) => [c.placeId, c.id])),
+  });
 }

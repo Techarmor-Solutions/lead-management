@@ -102,9 +102,18 @@ export default function LeadSearch() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ placeIds }),
       });
-      const { savedIds: alreadySaved } = await checkRes.json();
+      const { savedIds: alreadySaved, idMap } = await checkRes.json();
       if (alreadySaved.length > 0) {
         setSaved((prev) => new Set([...prev, ...alreadySaved]));
+      }
+      if (idMap && typeof idMap === "object") {
+        setSavedIds((prev) => {
+          const next = new Map(prev);
+          for (const [placeId, dbId] of Object.entries(idMap as Record<string, string>)) {
+            next.set(placeId, dbId);
+          }
+          return next;
+        });
       }
     }
 
