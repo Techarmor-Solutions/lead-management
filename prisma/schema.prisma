@@ -46,7 +46,8 @@ model Company {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  contacts Contact[]
+  contacts           Contact[]
+  companyListMembers CompanyListMember[]
 
   @@map("companies")
 }
@@ -246,9 +247,23 @@ model ContactList {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  members ContactListMember[]
+  members        ContactListMember[]
+  companyMembers CompanyListMember[]
 
   @@map("contact_lists")
+}
+
+model CompanyListMember {
+  id        String   @id @default(cuid())
+  listId    String
+  companyId String
+  createdAt DateTime @default(now())
+
+  list    ContactList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  company Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([listId, companyId])
+  @@map("company_list_members")
 }
 
 model ContactListMember {

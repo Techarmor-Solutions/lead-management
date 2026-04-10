@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 export async function GET() {
   const lists = await prisma.contactList.findMany({
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { members: true } } },
+    include: { _count: { select: { members: true, companyMembers: true } } },
   });
   return NextResponse.json(lists);
 }

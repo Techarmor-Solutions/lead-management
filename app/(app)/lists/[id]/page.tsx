@@ -19,6 +19,21 @@ export default async function ListDetailPage({ params }: { params: Promise<{ id:
             },
           },
         },
+        companyMembers: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            company: {
+              select: {
+                id: true,
+                name: true,
+                industry: true,
+                website: true,
+                enrichedAt: true,
+                _count: { select: { contacts: true } },
+              },
+            },
+          },
+        },
       },
     }),
     prisma.contact.findMany({
@@ -39,7 +54,7 @@ export default async function ListDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="p-8 max-w-5xl">
-      <ListDetail list={list} allContacts={allContacts} />
+      <ListDetail list={list!} allContacts={allContacts} />
     </div>
   );
 }

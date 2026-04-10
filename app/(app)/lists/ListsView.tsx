@@ -9,7 +9,7 @@ interface List {
   name: string;
   description: string;
   createdAt: Date | string;
-  _count: { members: number };
+  _count: { members: number; companyMembers: number };
 }
 
 export default function ListsView({ lists }: { lists: List[] }) {
@@ -135,8 +135,18 @@ export default function ListsView({ lists }: { lists: List[] }) {
               <p className="text-zinc-500 text-sm mb-3 line-clamp-2">{list.description}</p>
             )}
             <div className="flex items-center justify-between mt-3">
-              <span className="text-sm text-zinc-400">
-                <span className="text-white font-medium">{list._count.members}</span> contact{list._count.members !== 1 ? "s" : ""}
+              <span className="text-sm text-zinc-400 flex items-center gap-2">
+                <span>
+                  <span className="text-white font-medium">{list._count.members}</span> contact{list._count.members !== 1 ? "s" : ""}
+                </span>
+                {list._count.companyMembers > 0 && (
+                  <span className="text-zinc-600">·</span>
+                )}
+                {list._count.companyMembers > 0 && (
+                  <span>
+                    <span className="text-white font-medium">{list._count.companyMembers}</span> co{list._count.companyMembers !== 1 ? "s" : "."}
+                  </span>
+                )}
               </span>
               <a
                 href={`/lists/${list.id}`}

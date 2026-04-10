@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Search, Star, Globe, Phone, MapPin, Plus, Save, SlidersHorizontal, CheckSquare, Square } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Search, Star, Globe, Phone, MapPin, Plus, Save, SlidersHorizontal, CheckSquare, Square, List, ChevronDown, X } from "lucide-react";
 
 interface PlaceResult {
   placeId: string;
@@ -20,6 +20,11 @@ interface SearchResults {
   nextPageToken?: string;
 }
 
+interface ContactList {
+  id: string;
+  name: string;
+}
+
 export default function LeadSearch() {
   const [query, setQuery] = useState("");
   const [location, setLocation] = useState("");
@@ -35,10 +40,26 @@ export default function LeadSearch() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState<Set<string>>(new Set());
   const [saved, setSaved] = useState<Set<string>>(new Set());
+  // placeId → DB company id (captured after save so we can add to list)
+  const [savedIds, setSavedIds] = useState<Map<string, string>>(new Map());
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkSaving, setBulkSaving] = useState(false);
+
+  // List picker state
+  const [lists, setLists] = useState<ContactList[]>([]);
+  const [showListPicker, setShowListPicker] = useState(false);
+  const [newListName, setNewListName] = useState("");
+  const [addingToList, setAddingToList] = useState(false);
+  const [listSuccess, setListSuccess] = useState<string | null>(null);
+
+  // Fetch lists on mount
+  useEffect(() => {
+    fetch("/api/lists")
+      .then((r) => r.json())
+      .then((data) => setLists(Array.isArray(data) ? data : []));
+  }, []);
 
   // Client-side filters applied to API results
   const filteredResults = useMemo(() => {
@@ -62,7 +83,7 @@ export default function LeadSearch() {
     if (pageToken) params.set("pageToken", pageToken);
 
     const res = await fetch(`/api/leads/search?${params}`);
-    const data = await res.json();
+    const data: SearchResults = await res.json();
 
     const newResults: PlaceResult[] = data.results ?? [];
 
@@ -81,24 +102,30 @@ export default function LeadSearch() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ placeIds }),
       });
-      const { savedIds } = await checkRes.json();
-      if (savedIds.length > 0) {
-        setSaved((prev) => new Set([...prev, ...savedIds]));
+      const { savedIds: alreadySaved } = await checkRes.json();
+      if (alreadySaved.length > 0) {
+        setSaved((prev) => new Set([...prev, ...alreadySaved]));
       }
     }
 
     setLoading(false);
   }
 
-  async function saveCompany(place: PlaceResult) {
+  async function saveCompany(place: PlaceResult): Promise<string | null> {
     setSaving((prev) => new Set(prev).add(place.placeId));
-    await fetch("/api/companies", {
+    const res = await fetch("/api/companies", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...place, industry: query }),
     });
+    const company = await res.json();
     setSaving((prev) => { const n = new Set(prev); n.delete(place.placeId); return n; });
     setSaved((prev) => new Set(prev).add(place.placeId));
+    if (company?.id) {
+      setSavedIds((prev) => new Map(prev).set(place.placeId, company.id));
+      return company.id;
+    }
+    return null;
   }
 
   async function saveAllFiltered() {
@@ -148,6 +175,64 @@ export default function LeadSearch() {
     }
     setSelected(new Set());
     setBulkSaving(false);
+  }
+
+  async function addSelectedToList(listId: string, listName: string) {
+    setAddingToList(true);
+    setShowListPicker(false);
+
+    // First save any unsaved selected companies
+    const selectedPlaces = filteredResults.filter((p) => selected.has(p.placeId));
+    for (const place of selectedPlaces) {
+      if (!saved.has(place.placeId)) {
+        await saveCompany(place);
+      }
+    }
+
+    // Collect DB company IDs for all selected places
+    const companyIds: string[] = [];
+    for (const placeId of selected) {
+      const dbId = savedIds.get(placeId);
+      if (dbId) companyIds.push(dbId);
+    }
+
+    if (companyIds.length === 0) {
+      setAddingToList(false);
+      return;
+    }
+
+    const res = await fetch(`/api/lists/${listId}/companies`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ companyIds }),
+    });
+    const data = await res.json();
+
+    setAddingToList(false);
+    setSelected(new Set());
+    setListSuccess(`Added ${data.companiesAdded} compan${data.companiesAdded === 1 ? "y" : "ies"} to "${listName}"${data.contactsAdded > 0 ? ` + ${data.contactsAdded} existing contacts` : ""}`);
+    setTimeout(() => setListSuccess(null), 5000);
+  }
+
+  async function createListAndAdd() {
+    if (!newListName.trim()) return;
+    setAddingToList(true);
+    setShowListPicker(false);
+
+    // Create the list
+    const res = await fetch("/api/lists", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newListName.trim() }),
+    });
+    const newList = await res.json();
+
+    // Update local lists state
+    setLists((prev) => [{ id: newList.id, name: newList.name }, ...prev]);
+    setNewListName("");
+
+    // Add selected to the new list
+    await addSelectedToList(newList.id, newList.name);
   }
 
   const hasActiveFilters = minRating || maxRating || websiteFilter !== "any" || phoneFilter !== "any" || minReviews;
@@ -279,6 +364,16 @@ export default function LeadSearch() {
       {/* Results */}
       {allResults.length > 0 && (
         <div className="space-y-2">
+          {/* Success banner */}
+          {listSuccess && (
+            <div className="flex items-center justify-between bg-green-900/30 border border-green-700/40 rounded-xl px-4 py-2.5 text-sm text-green-400">
+              <span>{listSuccess}</span>
+              <button onClick={() => setListSuccess(null)} className="text-green-600 hover:text-green-400 ml-2">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
             <span className="text-sm text-zinc-500">
               {filteredResults.length} result{filteredResults.length !== 1 ? "s" : ""}
@@ -298,14 +393,71 @@ export default function LeadSearch() {
                 </button>
               )}
               {selected.size > 0 && (
-                <button
-                  onClick={saveSelected}
-                  disabled={bulkSaving}
-                  className="flex items-center gap-1.5 text-xs bg-[#eb9447] hover:bg-[#d4833a] disabled:opacity-50 text-white px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  {bulkSaving ? "Saving..." : `Save Selected (${selected.size})`}
-                </button>
+                <>
+                  {/* Add to List button */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowListPicker(!showListPicker)}
+                      disabled={addingToList}
+                      className="flex items-center gap-1.5 text-xs bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <List className="w-3.5 h-3.5" />
+                      {addingToList ? "Adding..." : `Add to List (${selected.size})`}
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
+
+                    {showListPicker && (
+                      <div className="absolute right-0 top-full mt-1 z-50 bg-[#1a1a1a] border border-zinc-700 rounded-xl shadow-2xl w-64 py-1 overflow-hidden">
+                        {/* New list input */}
+                        <div className="px-3 py-2 border-b border-zinc-800">
+                          <div className="flex gap-1.5">
+                            <input
+                              autoFocus
+                              value={newListName}
+                              onChange={(e) => setNewListName(e.target.value)}
+                              onKeyDown={(e) => e.key === "Enter" && newListName.trim() && createListAndAdd()}
+                              className="input text-xs flex-1 py-1.5"
+                              placeholder="New list name..."
+                            />
+                            <button
+                              onClick={createListAndAdd}
+                              disabled={!newListName.trim()}
+                              className="text-xs bg-[#eb9447] hover:bg-[#d4833a] text-white px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                              Create
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Existing lists */}
+                        <div className="max-h-52 overflow-y-auto">
+                          {lists.length === 0 ? (
+                            <p className="text-xs text-zinc-500 text-center py-3">No lists yet</p>
+                          ) : (
+                            lists.map((l) => (
+                              <button
+                                key={l.id}
+                                onClick={() => addSelectedToList(l.id, l.name)}
+                                className="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
+                              >
+                                {l.name}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={saveSelected}
+                    disabled={bulkSaving}
+                    className="flex items-center gap-1.5 text-xs bg-[#eb9447] hover:bg-[#d4833a] disabled:opacity-50 text-white px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    {bulkSaving ? "Saving..." : `Save Selected (${selected.size})`}
+                  </button>
+                </>
               )}
               {filteredResults.length > 1 && (
                 <button
@@ -420,6 +572,11 @@ export default function LeadSearch() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Click outside to close list picker */}
+      {showListPicker && (
+        <div className="fixed inset-0 z-40" onClick={() => setShowListPicker(false)} />
       )}
     </div>
   );

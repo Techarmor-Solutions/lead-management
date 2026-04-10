@@ -59,5 +59,23 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
     }
   }
 
+  // Auto-sync all contacts into any lists this company belongs to
+  const listMemberships = await prisma.companyListMember.findMany({
+    where: { companyId: id },
+    select: { listId: true },
+  });
+  if (listMemberships.length > 0) {
+    const allContacts = await prisma.contact.findMany({
+      where: { companyId: id },
+      select: { id: true },
+    });
+    for (const { listId } of listMemberships) {
+      await prisma.contactListMember.createMany({
+        data: allContacts.map((c) => ({ listId, contactId: c.id })),
+        skipDuplicates: true,
+      });
+    }
+  }
+
   return NextResponse.json({ company: updated, enrichmentData });
 }
