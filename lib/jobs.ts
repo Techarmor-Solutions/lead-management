@@ -91,8 +91,13 @@ export async function runProcessScheduled(): Promise<{ processed: number }> {
         continue;
       }
 
-      // Non-email steps are manual tasks — skip auto-sending
-      if (send.step.stepType !== "EMAIL") continue;
+      // Non-email steps are manual tasks — auto-mark as SENT when their time has passed
+      // so subsequent email steps can fire without being blocked
+      if (send.step.stepType !== "EMAIL") {
+        await prisma.send.update({ where: { id: send.id }, data: { status: "SENT", sentAt: new Date() } });
+        processed++;
+        continue;
+      }
 
       const { contact, step } = send;
       const subject = applyPersonalizationTags(step.subject, contact, contact.company, senderName);

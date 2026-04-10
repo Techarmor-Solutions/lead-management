@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle, Send, Pause, Play, Trash2, Plus, Pencil, RefreshCw } from "lucide-react";
+import { CheckCircle, Send, Pause, Play, Trash2, Plus, Pencil, RefreshCw, Zap } from "lucide-react";
 import Link from "next/link";
 
 interface Props {
@@ -13,7 +13,9 @@ export default function CampaignActions({ campaign }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
+  const [processResult, setProcessResult] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<"approve" | "send" | "delete" | null>(null);
 
   async function updateStatus(status: string) {
@@ -33,6 +35,16 @@ export default function CampaignActions({ campaign }: Props) {
     await fetch(`/api/campaigns/${campaign.id}/send`, { method: "POST" });
     setLoading(false);
     setConfirm(null);
+    router.refresh();
+  }
+
+  async function processScheduled() {
+    setProcessing(true);
+    setProcessResult(null);
+    const res = await fetch("/api/cron/process-scheduled", { method: "POST" });
+    const data = await res.json();
+    setProcessResult(`Processed ${data.processed ?? 0} pending send${data.processed === 1 ? "" : "s"}`);
+    setProcessing(false);
     router.refresh();
   }
 
@@ -128,7 +140,19 @@ export default function CampaignActions({ campaign }: Props) {
     <div className="flex items-center gap-2 flex-wrap">
       {["ACTIVE", "SENDING", "PAUSED", "COMPLETED"].includes(campaign.status) && (
         <div className="flex items-center gap-2">
+          {processResult && <span className="text-xs text-zinc-400">{processResult}</span>}
           {syncResult && <span className="text-xs text-zinc-400">{syncResult}</span>}
+          {["ACTIVE", "SENDING"].includes(campaign.status) && (
+            <button
+              onClick={processScheduled}
+              disabled={processing}
+              className="flex items-center gap-1.5 text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+              title="Process all overdue scheduled sends now"
+            >
+              <Zap className={`w-3.5 h-3.5 ${processing ? "animate-pulse" : ""}`} />
+              {processing ? "Processing..." : "Process Pending"}
+            </button>
+          )}
           <button
             onClick={syncReplies}
             disabled={syncing}

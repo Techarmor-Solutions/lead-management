@@ -197,6 +197,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
       {/* Campaign Progression */}
       {showProgress && (
         <CampaignProgress
+          campaignId={id}
           stepSummaries={stepSummaries}
           contactProgress={contactProgress}
           totalSteps={campaign.steps.length}

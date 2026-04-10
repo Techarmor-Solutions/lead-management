@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Users, UserCheck, UserX, Clock, Mail, Linkedin, Phone, CheckSquare,
-  MessageSquare, CheckCircle2, MailOpen, MousePointerClick, Reply, Ban,
+  MessageSquare, CheckCircle2, MailOpen, MousePointerClick, Reply, Ban, Send,
 } from "lucide-react";
 
 export type StepSummary = {
@@ -38,6 +39,7 @@ export type ContactProgress = {
 };
 
 interface Props {
+  campaignId: string;
   stepSummaries: StepSummary[];
   contactProgress: ContactProgress[];
   totalSteps: number;
@@ -59,8 +61,17 @@ function DaysChip({ days }: { days: number | null }) {
   return <span className="text-xs text-zinc-400">In {days} day{days !== 1 ? "s" : ""}</span>;
 }
 
-export default function CampaignProgress({ stepSummaries, contactProgress, totalSteps, campaignStatus }: Props) {
+export default function CampaignProgress({ campaignId, stepSummaries, contactProgress, totalSteps, campaignStatus }: Props) {
+  const router = useRouter();
   const [tab, setTab] = useState<"active" | "removed">("active");
+  const [sendingStep, setSendingStep] = useState<string | null>(null);
+
+  async function sendNow(stepId: string) {
+    setSendingStep(stepId);
+    await fetch(`/api/campaigns/${campaignId}/steps/${stepId}/send-now`, { method: "POST" });
+    setSendingStep(null);
+    router.refresh();
+  }
 
   const activeContacts = contactProgress.filter((c) => c.isActive);
   const removedContacts = contactProgress.filter((c) => c.isRemoved);
@@ -78,6 +89,8 @@ export default function CampaignProgress({ stepSummaries, contactProgress, total
             {stepSummaries.map((step) => {
               const total = step.scheduledCount + step.sentCount + step.cancelledCount;
               const pct = total > 0 ? Math.round((step.sentCount / (step.sentCount + step.scheduledCount || 1)) * 100) : 0;
+              const isOverdue = step.daysUntilFire !== null && step.daysUntilFire < 0;
+              const canSendNow = step.stepType === "EMAIL" && step.scheduledCount > 0 && isLive;
               return (
                 <div key={step.stepId} className="px-5 py-3.5">
                   <div className="flex items-center justify-between mb-2">
@@ -109,6 +122,21 @@ export default function CampaignProgress({ stepSummaries, contactProgress, total
                           <Ban className="w-3 h-3" />
                           {step.cancelledCount} skipped
                         </span>
+                      )}
+                      {canSendNow && (
+                        <button
+                          onClick={() => sendNow(step.stepId)}
+                          disabled={sendingStep === step.stepId}
+                          className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors disabled:opacity-50 ${
+                            isOverdue
+                              ? "bg-[#eb9447]/20 hover:bg-[#eb9447]/30 text-[#eb9447] border border-[#eb9447]/30"
+                              : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700"
+                          }`}
+                          title={isOverdue ? "Send overdue emails now" : "Send ahead of schedule"}
+                        >
+                          <Send className="w-2.5 h-2.5" />
+                          {sendingStep === step.stepId ? "Sending..." : "Send Now"}
+                        </button>
                       )}
                     </div>
                   </div>
