@@ -44,7 +44,7 @@ export default function Sidebar() {
       {/* Brand */}
       <div className="px-4 py-4 border-b border-[#1e3040]">
         <Image
-          src="/logo.png"
+          src="/white-ta-logo.png"
           alt="TechArmor Solutions"
           width={160}
           height={48}

@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Building2, Users, Globe, MapPin, Star, ChevronLeft, ChevronRight, Plus, X, Upload, Trash2, Check, Zap, Square, CheckSquare, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Building2, Users, Globe, MapPin, Star, ChevronLeft, ChevronRight, Plus, X, Upload, Trash2, Check, Zap, Square, CheckSquare, SlidersHorizontal, ChevronDown, List } from "lucide-react";
 import CsvImportModal from "@/components/CsvImportModal";
 
 interface Company {
@@ -104,6 +104,17 @@ export default function CompanyList({
     done: boolean;
   } | null>(null);
   const [bulkCancelled, setBulkCancelled] = useState(false);
+
+  // Add to list state
+  const [lists, setLists] = useState<{ id: string; name: string }[]>([]);
+  const [showListPicker, setShowListPicker] = useState(false);
+  const [newListName, setNewListName] = useState("");
+  const [addingToList, setAddingToList] = useState(false);
+  const [listSuccess, setListSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/lists").then((r) => r.json()).then((d) => setLists(Array.isArray(d) ? d : []));
+  }, []);
 
   function toggleSelect(e: React.MouseEvent, id: string) {
     e.preventDefault();
@@ -250,6 +261,37 @@ export default function CompanyList({
       done: true,
     });
     router.refresh();
+  }
+
+  async function addToList(listId: string, listName: string) {
+    setAddingToList(true);
+    setShowListPicker(false);
+    const companyIds = Array.from(selectedIds);
+    const res = await fetch(`/api/lists/${listId}/companies`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ companyIds }),
+    });
+    const data = await res.json();
+    setAddingToList(false);
+    cancelSelection();
+    setListSuccess(`Added ${data.companiesAdded} compan${data.companiesAdded === 1 ? "y" : "ies"} to "${listName}"${data.contactsAdded > 0 ? ` + ${data.contactsAdded} contacts` : ""}`);
+    setTimeout(() => setListSuccess(null), 5000);
+  }
+
+  async function createListAndAdd() {
+    if (!newListName.trim()) return;
+    setAddingToList(true);
+    setShowListPicker(false);
+    const res = await fetch("/api/lists", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newListName.trim() }),
+    });
+    const newList = await res.json();
+    setLists((prev) => [{ id: newList.id, name: newList.name }, ...prev]);
+    setNewListName("");
+    await addToList(newList.id, newList.name);
   }
 
   const hasActiveFilters = !!(search || industryFilter || dateFrom || dateTo || enriched || rankFilter);
@@ -404,6 +446,15 @@ export default function CompanyList({
         </div>
       )}
 
+      {listSuccess && (
+        <div className="flex items-center justify-between bg-green-900/30 border border-green-700/40 rounded-xl px-4 py-2.5 text-sm text-green-400 mb-3">
+          <span>{listSuccess}</span>
+          <button onClick={() => setListSuccess(null)} className="text-green-600 hover:text-green-400 ml-2">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {selectionMode && (
         <div className="flex items-center gap-2 mb-3 px-4 py-3 bg-zinc-900 border border-zinc-700 rounded-xl flex-wrap">
           <span className="text-sm text-zinc-400 mr-1">
@@ -422,6 +473,58 @@ export default function CompanyList({
             Deselect All
           </button>
           <div className="flex-1" />
+
+          {/* Add to List */}
+          <div className="relative">
+            <button
+              onClick={() => setShowListPicker(!showListPicker)}
+              disabled={selectedIds.size === 0 || addingToList}
+              className="flex items-center gap-1.5 text-sm bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-white px-4 py-1.5 rounded-lg transition-colors"
+            >
+              <List className="w-3.5 h-3.5" />
+              {addingToList ? "Adding..." : "Add to List"}
+              <ChevronDown className="w-3 h-3" />
+            </button>
+            {showListPicker && (
+              <div className="absolute right-0 top-full mt-1 z-50 bg-[#1a1a1a] border border-zinc-700 rounded-xl shadow-2xl w-64 py-1 overflow-hidden">
+                <div className="px-3 py-2 border-b border-zinc-800">
+                  <div className="flex gap-1.5">
+                    <input
+                      autoFocus
+                      value={newListName}
+                      onChange={(e) => setNewListName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && newListName.trim() && createListAndAdd()}
+                      className="input text-xs flex-1 py-1.5"
+                      placeholder="New list name..."
+                    />
+                    <button
+                      onClick={createListAndAdd}
+                      disabled={!newListName.trim()}
+                      className="text-xs bg-[#eb9447] hover:bg-[#d4833a] text-white px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      Create
+                    </button>
+                  </div>
+                </div>
+                <div className="max-h-52 overflow-y-auto">
+                  {lists.length === 0 ? (
+                    <p className="text-xs text-zinc-500 text-center py-3">No lists yet</p>
+                  ) : (
+                    lists.map((l) => (
+                      <button
+                        key={l.id}
+                        onClick={() => addToList(l.id, l.name)}
+                        className="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
+                      >
+                        {l.name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           <button
             onClick={startEnrichSelected}
             disabled={selectedIds.size === 0}
@@ -431,6 +534,11 @@ export default function CompanyList({
             Enrich Selected ({selectedIds.size})
           </button>
         </div>
+      )}
+
+      {/* Close list picker on outside click */}
+      {showListPicker && (
+        <div className="fixed inset-0 z-40" onClick={() => setShowListPicker(false)} />
       )}
 
       <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl overflow-hidden">
