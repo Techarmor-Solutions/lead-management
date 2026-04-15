@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { BarChart3, Mail, MousePointer, MessageSquare, AlertTriangle, ChevronDown, Check } from "lucide-react";
 import { pct } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
@@ -49,7 +49,6 @@ export default function AnalyticsClient({
   stats: Stats;
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -66,13 +65,7 @@ export default function AnalyticsClient({
   }, []);
 
   function selectCampaign(id: string | null) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (id) {
-      params.set("campaign", id);
-    } else {
-      params.delete("campaign");
-    }
-    router.push(`/analytics?${params.toString()}`);
+    router.push(id ? `/analytics?campaign=${id}` : `/analytics`);
     setDropdownOpen(false);
   }
 
