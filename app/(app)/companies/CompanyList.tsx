@@ -364,13 +364,22 @@ export default function CompanyList({
             Cancel
           </button>
         ) : (
-          <button
-            onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
-            className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
-          >
-            <Zap className="w-4 h-4" />
-            Bulk Enrich (Lite)
-          </button>
+          <>
+            <button
+              onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
+              className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+            >
+              <List className="w-4 h-4" />
+              Add to List
+            </button>
+            <button
+              onClick={() => { setSelectionMode(true); setSelectedIds(new Set()); }}
+              className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+            >
+              <Zap className="w-4 h-4" />
+              Bulk Enrich (Lite)
+            </button>
+          </>
         )}
         <button
           onClick={() => setShowModal(true)}

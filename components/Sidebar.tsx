@@ -15,6 +15,7 @@ import {
   ListChecks,
   Kanban,
   CheckSquare,
+  Phone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/companies", label: "Companies", icon: Building2 },
   { href: "/contacts", label: "Contacts", icon: Users },
   { href: "/lists", label: "Lists", icon: ListChecks },
+  { href: "/calls", label: "Calls", icon: Phone },
   { href: "/deals", label: "Deals", icon: Kanban },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/campaigns", label: "Campaigns", icon: Mail },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { BarChart3, Mail, MousePointer, MessageSquare, AlertTriangle, ChevronDown, Check } from "lucide-react";
+import { BarChart3, Mail, MousePointer, MessageSquare, AlertTriangle, ChevronDown, Check, Phone, TrendingUp } from "lucide-react";
 import { pct } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
 
@@ -39,16 +39,31 @@ type Stats = {
   totalBounced: number;
 };
 
+type CallData = {
+  total: number;
+  today: number;
+  thisWeek: number;
+  connectRate: number;
+  conversionRate: number;
+  outcomeBreakdown: { outcome: string; count: number; pct: number }[];
+  dailyVolume: { date: string; label: string; count: number; maxCount: number }[];
+};
+
 export default function AnalyticsClient({
   campaigns,
   selectedId,
   stats,
+  callData,
+  initialTab = "email",
 }: {
   campaigns: Campaign[];
   selectedId: string | null;
   stats: Stats;
+  callData: CallData;
+  initialTab?: "email" | "calls";
 }) {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"email" | "calls">(initialTab);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -79,11 +94,44 @@ export default function AnalyticsClient({
 
   return (
     <div className="p-8">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-white">Analytics</h1>
+      </div>
+
+      {/* Tab switcher */}
+      <div className="flex gap-1 mb-8 bg-zinc-900 border border-zinc-800 rounded-xl p-1 w-fit">
+        <button
+          onClick={() => setActiveTab("email")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            activeTab === "email"
+              ? "bg-[#1a1a1a] text-white shadow"
+              : "text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          <Mail className="w-4 h-4" />
+          Email
+        </button>
+        <button
+          onClick={() => setActiveTab("calls")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            activeTab === "calls"
+              ? "bg-[#1a1a1a] text-white shadow"
+              : "text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          <Phone className="w-4 h-4" />
+          Calls
+        </button>
+      </div>
+
+      {activeTab === "calls" && <CallsTab data={callData} />}
+
+      {activeTab === "email" && <>
       {/* Header + Campaign Selector */}
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Analytics</h1>
-          <p className="text-zinc-500 text-sm mt-1">
+          <p className="text-zinc-500 text-sm">
             {selectedCampaign ? `Viewing: ${selectedCampaign.name}` : "All campaigns overview"}
           </p>
         </div>
@@ -201,6 +249,150 @@ export default function AnalyticsClient({
 
       {/* If campaign selected: step breakdown + per-contact detail */}
       {selectedCampaign && <CampaignDetail campaign={selectedCampaign} />}
+      </>}
+    </div>
+  );
+}
+
+const OUTCOME_COLORS: Record<string, string> = {
+  "No answer":          "bg-zinc-600",
+  "Left voicemail":     "bg-blue-500",
+  "Not interested":     "bg-red-500",
+  "Callback requested": "bg-amber-500",
+  "Interested":         "bg-green-500",
+  "Converted":          "bg-purple-500",
+  "No outcome logged":  "bg-zinc-700",
+};
+
+function CallsTab({ data }: { data: CallData }) {
+  const statCards = [
+    { label: "Total Calls", value: data.total, icon: Phone, color: "text-[#eb9447]" },
+    { label: "Today", value: data.today, icon: Phone, color: "text-green-400" },
+    { label: "This Week", value: data.thisWeek, icon: BarChart3, color: "text-blue-400" },
+    { label: "Connect Rate", value: `${data.connectRate}%`, icon: TrendingUp, color: "text-amber-400" },
+    { label: "Conversion Rate", value: `${data.conversionRate}%`, icon: TrendingUp, color: "text-purple-400" },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {statCards.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div key={stat.label} className="bg-[#1a1a1a] border border-zinc-800 rounded-xl p-5">
+              <Icon className={`w-5 h-5 ${stat.color} mb-2`} />
+              <div className="text-2xl font-bold text-white">{stat.value}</div>
+              <div className="text-sm text-zinc-500">{stat.label}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Outcome breakdown */}
+        <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-zinc-800">
+            <h2 className="font-semibold text-white">Outcome Breakdown</h2>
+          </div>
+          {data.outcomeBreakdown.length === 0 ? (
+            <div className="py-12 text-center text-zinc-500 text-sm">No calls logged yet</div>
+          ) : (
+            <div className="p-5 space-y-3">
+              {data.outcomeBreakdown.map(({ outcome, count, pct: p }) => (
+                <div key={outcome}>
+                  <div className="flex items-center justify-between text-sm mb-1.5">
+                    <span className="text-zinc-300">{outcome}</span>
+                    <span className="text-zinc-500">{count} · {p}%</span>
+                  </div>
+                  <div className="w-full bg-zinc-800 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all ${OUTCOME_COLORS[outcome] ?? "bg-zinc-500"}`}
+                      style={{ width: `${p}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Daily volume */}
+        <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-zinc-800">
+            <h2 className="font-semibold text-white">Daily Call Volume</h2>
+            <p className="text-xs text-zinc-500 mt-0.5">Last 30 days</p>
+          </div>
+          <div className="p-5">
+            {data.total === 0 ? (
+              <div className="py-8 text-center text-zinc-500 text-sm">No calls logged yet</div>
+            ) : (
+              <div className="flex items-end gap-0.5 h-32">
+                {data.dailyVolume.map(({ date, label, count, maxCount }) => (
+                  <div
+                    key={date}
+                    className="flex-1 flex flex-col items-center justify-end group relative"
+                  >
+                    <div
+                      className="w-full bg-[#eb9447]/70 hover:bg-[#eb9447] rounded-t transition-colors"
+                      style={{ height: `${count > 0 ? Math.max((count / maxCount) * 100, 8) : 0}%` }}
+                    />
+                    {/* Tooltip */}
+                    {count > 0 && (
+                      <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-10">
+                        {label}: {count}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {data.total > 0 && (
+              <div className="flex justify-between text-xs text-zinc-600 mt-2">
+                <span>{data.dailyVolume[0]?.label}</span>
+                <span>{data.dailyVolume[data.dailyVolume.length - 1]?.label}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Outcome detail table */}
+      {data.outcomeBreakdown.length > 0 && (
+        <div className="bg-[#1a1a1a] border border-zinc-800 rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-zinc-800">
+            <h2 className="font-semibold text-white">Outcome Detail</h2>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-800">
+                <th className="text-left px-5 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Outcome</th>
+                <th className="text-right px-5 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">Count</th>
+                <th className="text-right px-5 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider">% of Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800">
+              {data.outcomeBreakdown.map(({ outcome, count, pct: p }) => (
+                <tr key={outcome}>
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${OUTCOME_COLORS[outcome] ?? "bg-zinc-500"}`} />
+                      <span className="text-zinc-300">{outcome}</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3 text-right text-zinc-400">{count}</td>
+                  <td className="px-5 py-3 text-right text-zinc-400">{p}%</td>
+                </tr>
+              ))}
+              <tr className="border-t border-zinc-700 bg-zinc-900/50">
+                <td className="px-5 py-3 text-zinc-400 font-medium">Total</td>
+                <td className="px-5 py-3 text-right text-white font-medium">{data.total}</td>
+                <td className="px-5 py-3 text-right text-zinc-400">100%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
